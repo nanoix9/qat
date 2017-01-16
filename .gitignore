@@ -1,0 +1,14 @@
+*.swp
+*.swo
+*.swn
+*~
+_build
+*.native
+*.byte
+*.mldylib
+*.mllib
+
+*.docdir
+
+setup.data
+setup.log

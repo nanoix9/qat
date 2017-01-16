@@ -1,0 +1,37 @@
+OASISFormat: 0.4
+Name:        Qat
+Version:     0.0.1
+Synopsis:    Yet another general purpose programming language
+Authors:     nanoix9 <nanoix9@gmail.com>
+License:     GPL
+Plugins:     META (0.4), DevFiles (0.4)
+AlphaFeatures: ocamlbuild_more_args
+BuildTools:  ocamlbuild
+
+Library qat
+  Path:       src
+  #Modules:    Qat
+  InternalModules: Parse
+
+Executable qat
+  Path:       src
+  MainIs:     qatc.ml
+
+Executable main
+  Path:       src
+  MainIs:     main.ml
+  BuildDepends: qat
+
+Executable test
+  Install: false
+  Path: test
+  MainIs: test.ml
+  Build$: flag(tests)
+  BuildDepends: oUnit, qat
+
+Test "main"
+  Type: Custom (0.0.1)
+  Run$: flag(tests)
+  Command: $test
+
+

@@ -1,0 +1,11 @@
+# OASIS_START
+# DO NOT EDIT (digest: 23a082504ac1d61521afe216ff6d2db8)
+version = "0.0.1"
+description = "Yet another general purpose programming language"
+archive(byte) = "qat.cma"
+archive(byte, plugin) = "qat.cma"
+archive(native) = "qat.cmxa"
+archive(native, plugin) = "qat.cmxs"
+exists_if = "qat.cma"
+# OASIS_STOP
+
