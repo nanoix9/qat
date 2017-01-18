@@ -5,8 +5,6 @@ let main () =
     let args   = List.tl argv in
     let expr   = String.concat " " args in
     let result = parse expr in
-        Printf.printf "%s: %s\n" expr (match result with
-            | None -> ""
-            | Some t -> Ast.str_of_ast t)
+        Printf.printf "%s: %s\n" expr (unparse result)
 
 let () = main ()

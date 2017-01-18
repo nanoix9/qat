@@ -5,13 +5,14 @@ type imm =
     | Bool of bool
 
 type token =
+    | EOS
     | Imm of imm
     | Id of string
     | Op of string
 
-type ast =
-    | Token of token
-    | Expr of ast list
+type expr =
+    | Atom of token
+    | ExprList of expr list
 
 let str_of_imm = function
     | Int i -> "INT(" ^ (string_of_int i) ^ ")"
@@ -20,10 +21,12 @@ let str_of_imm = function
     | Bool b -> "BOOL(" ^ (string_of_bool b) ^ ")"
 
 let str_of_token = function
+    | EOS -> ""
     | Imm i -> str_of_imm i
     | Id i -> i
     | Op o -> o
 
-let rec str_of_ast = function
-    | Token t -> str_of_token t
-    | Expr e -> "(" ^ Util.join (List.map str_of_ast e) ^ ")"
+let rec str_of_expr = function
+    | Atom t -> str_of_token t
+    | ExprList e -> "(" ^ Util.join (List.map str_of_expr e) ^ ")"
+
