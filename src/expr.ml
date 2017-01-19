@@ -6,6 +6,9 @@ type imm =
 
 type token =
     | EOS
+    | LPAREN
+    | RPAREN
+    | TERMIN
     | Imm of imm
     | Id of string
     | Op of string
@@ -21,7 +24,10 @@ let str_of_imm = function
     | Bool b -> "BOOL(" ^ (string_of_bool b) ^ ")"
 
 let str_of_token = function
-    | EOS -> ""
+    | EOS -> "EOS"
+    | LPAREN -> "LPAREN"
+    | RPAREN -> "RPAREN"
+    | TERMIN -> "TERMIN"
     | Imm i -> str_of_imm i
     | Id i -> i
     | Op o -> o
