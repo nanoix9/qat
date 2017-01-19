@@ -4,12 +4,14 @@ exception LexErr
 
 type stream = { mutable curr: token option; buf: string; mutable pos: int; mutable line_num: int }
 
-let re_id = Str.regexp "[a-zA-Z_][a-zA-Z0-9=*+/<>!?-]*"
+let re_int = Str.regexp "-?[0-9]+"
+let re_float = Str.regexp "-?[0-9]+\\.[0-9]*\\([eE][+-]?[0-9]+\\)?"
+let re_id = Str.regexp "[a-zA-Z_][a-zA-Z0-9_]*"
 let re_whitespace = Str.regexp "[ \t\n]+"
 
 let new_stream str = { curr=None; buf=str; pos=0; line_num=1; }
 
-let read_next stream =
+let read_next stream :token =
     let pos = stream.pos in
     let buf = stream.buf in
     if pos >= String.length buf then
@@ -19,6 +21,12 @@ let read_next stream =
         if c = '(' then (pos+1, LPAREN)
         else if c = ')' then (pos+1, RPAREN)
         else if c = ';' then (pos+1, TERMIN)
+        else if (Str.string_match re_float buf pos) then
+            let token = Str.matched_string buf in
+            (Str.match_end (), Imm (Float (float_of_string token)))
+        else if (Str.string_match re_int buf pos) then
+            let token = Str.matched_string buf in
+            (Str.match_end (), Imm (Int (int_of_string token)))
         else if (Str.string_match re_id buf pos) then
             let token = Str.matched_string buf in
             (Str.match_end (), Id token)
