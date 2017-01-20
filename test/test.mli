@@ -21,6 +21,4 @@
 (******************************************************************************)
 
 
-let _ =
-    OUnit2.run_test_tt_main LexTest.suite
-
+(*val myrun: OUnit.test -> OUnit.test_result list *)

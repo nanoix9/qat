@@ -6,9 +6,9 @@ type imm =
 
 type token =
     | EOS
-    | LPAREN
-    | RPAREN
-    | TERMIN
+    | OpenGroup of string
+    | CloseGroup of string
+    | Terminator of string
     | Imm of imm
     | Id of string
     | Op of string
@@ -25,9 +25,9 @@ let str_of_imm = function
 
 let str_of_token = function
     | EOS -> "EOS"
-    | LPAREN -> "LPAREN"
-    | RPAREN -> "RPAREN"
-    | TERMIN -> "TERMIN"
+    | OpenGroup t -> "OPEN" ^ t
+    | CloseGroup t -> "CLOSE" ^ t
+    | Terminator t -> "TERMIN" ^ t
     | Imm i -> str_of_imm i
     | Id i -> i
     | Op o -> o
