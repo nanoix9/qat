@@ -50,13 +50,14 @@ and expr_seq_group start_token (first:expr list) (strm:stream) :expr =
             | CloseGroup t -> let _ = pop_token strm in match_group st t, []
             | _ -> let e = expr_seq strm in
                    let prefix, rest = helper st strm
-                   in prefix, e::rest
-    in
+                   in prefix, e::rest in
     let prefix, rest = helper start_token strm in
-    let lst = match prefix, first with
-        | None, [] -> rest
-        | Some t, [] -> (Atom (Op t)::rest)
-        | Some t, _ -> (Atom (Op t)::(ExprList first)::rest)
+    let tail = match first with
+        | [] -> rest
+        | _ -> (ExprList first)::rest in
+    let lst = match prefix with
+        | None -> tail
+        | Some t -> Atom (Op t)::tail
     in ExprList lst
 
 and expr_seq (strm:stream) :expr =

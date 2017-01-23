@@ -20,7 +20,13 @@
 (* Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA              *)
 (******************************************************************************)
 
+open OUnit2
 
-let _ =
-    OUnit2.run_test_tt_main LexTest.suite
+let suite = "All" >::: [
+        LexTest.suite;
+        ParseTest.suite;
+    ]
+;;
+
+let _ = OUnit2.run_test_tt_main suite
 

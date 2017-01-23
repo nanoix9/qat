@@ -29,10 +29,16 @@ let str_of_token = function
     | CloseGroup t -> "CLOSE" ^ t
     | Terminator t -> "TERMIN" ^ t
     | Imm i -> str_of_imm i
-    | Id i -> i
-    | Op o -> o
+    | Id i -> "ID<" ^ i ^ ">"
+    | Op o -> "OP<" ^ o ^ ">"
 
 let rec str_of_expr = function
     | Atom t -> str_of_token t
     | ExprList e -> "(" ^ Util.join (List.map str_of_expr e) ^ ")"
 
+let rec eq_expr (e:expr) (f:expr) :bool =
+    match e, f with
+        | Atom t, Atom s -> t = s
+        | ExprList e, ExprList f -> List.length e = List.length f &&
+                                    List.for_all2 eq_expr e f
+        | _ -> false
