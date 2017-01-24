@@ -52,9 +52,9 @@ and expr_seq_group start_token (first:expr list) (strm:stream) :expr =
                    let prefix, rest = helper st strm
                    in prefix, e::rest in
     let prefix, rest = helper start_token strm in
-    let tail = match first with
+    let tail = Atom (Id "do")::(match first with
         | [] -> rest
-        | _ -> (ExprList first)::rest in
+        | _ -> (ExprList first)::rest) in
     let lst = match prefix with
         | None -> tail
         | Some t -> Atom (Op t)::tail
