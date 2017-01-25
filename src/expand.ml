@@ -43,7 +43,8 @@ let equal_mmatch_result mr1 mr2 =
 ;;
 
 let create_macro (pattern: macro_expr) (body: macro_expr) :macro =
-    { pattern=pattern; body=body; } ;;
+    { pattern=pattern; body=body; }
+;;
 
 let rec mmatch (pattern: macro_expr) (expr_: expr) =
     match pattern, expr_ with
@@ -68,7 +69,7 @@ and mmatch_list mlist elist :bool * mmap_type option =
             in true, mmap_merged
         else false, None) in
     match mlist, elist with
-        | [], [] -> true, Some StrMap.empty
+        | [], _ -> true, Some StrMap.empty
         | m::mtail, e::etail -> (match mmatch m e with
             | false, _ -> false, None
             | true, mmap -> let success, mmap_tail = mmatch_list mtail etail in
@@ -77,6 +78,8 @@ and mmatch_list mlist elist :bool * mmap_type option =
 ;;
 
 (*
+let rec mreplace mmatch_result expr :expr =
+    match
 let expand_once (m: macro) (e: expr) :expr =
     mreplace (mmatch m.pattern expr) m.body
 ;;

@@ -45,5 +45,13 @@ let suite =
                         atom_id "else"; blk_false])
             );
 
+        "test_partial_match" >:: (fun c ->
+                let e = atom_id "foo" in
+                assert_mmatch c
+                    (true, Some (StrMap.add "foo" e StrMap.empty))
+                    (expr_list [atom_var "foo"])
+                    (expr_list [e; atom_id "bar"])
+            );
+
     ]
 
