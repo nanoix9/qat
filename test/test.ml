@@ -25,6 +25,7 @@ open OUnit2
 let suite = "All" >::: [
         LexTest.suite;
         ParseTest.suite;
+        ExpandTest.suite;
     ]
 ;;
 
