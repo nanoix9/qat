@@ -21,7 +21,7 @@ let test_op_single c = assert_lex c (Op "+") "+haha"
 
 (* Name the test cases and group them together *)
 let suite =
-    "suite" >::: [
+    "lex" >::: [
         "test_id" >:: test_id;
         "test_id_underscore" >:: test_id_underscore;
 

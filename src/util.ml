@@ -4,6 +4,9 @@ let rec join ?(sep=" ") x =
     | [x]     -> x
     | x::xs   -> x ^ sep ^ join ~sep:sep xs
 
+let rec joina ?(sep=" ") x =
+    String.concat sep (Array.to_list x)
+
 module StrMap = Map.Make(String)
 let str_of_strmap str_of_value smap =
     "{" ^ (join ~sep:", " (StrMap.fold (fun k v lst ->

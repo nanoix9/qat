@@ -22,10 +22,11 @@
 
 open OUnit2
 
-let suite = "All" >::: [
+let suite = "all" >::: [
         LexTest.suite;
         ParseTest.suite;
         ExpandTest.suite;
+        EarleyTest.suite;
     ]
 ;;
 

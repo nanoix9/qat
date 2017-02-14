@@ -7,7 +7,7 @@ let assert_parse c expect str =
 
 (* Name the test cases and group them together *)
 let suite =
-    "suite" >::: [
+    "parse" >::: [
         "test_id" >:: (fun c -> assert_parse c (Atom (Id "foo")) "foo");
         "test_id_no_space" >:: (fun c -> assert_parse c (Atom (Id "foo_")) "foo_^&**");
 
