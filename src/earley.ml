@@ -58,11 +58,14 @@ let get_next_symbol gram item :('a symbol) option =
         Some (Array.get rhs item.next)
 ;;
 
+let add_item s i item =
+    DA.add (DA.get s i) item
+
 let earley_match gram input =
     let predict s i non_term =
         let f k rule =
             if rule.lhs = non_term then
-                DA.add (DA.get s i) {rule=k; start=i; next=0}
+                add_item s i {rule=k; start=i; next=0}
         in
         DA.iteri f gram.rules
     and scan s i j check_term =
@@ -71,7 +74,7 @@ let earley_match gram input =
             let item = DA.get (DA.get s i) j in
             (if DA.length s <= i+1 then
                 DA.add s (DA.make 1);
-            DA.add (DA.get s (i+1)) {item with next=item.next+1})
+            add_item s (i+1) {item with next=item.next+1})
     and complete s i j =
         let state_set = (DA.get s i) in
         let item = DA.get state_set j in
@@ -79,7 +82,7 @@ let earley_match gram input =
         let f item =
             match get_next_symbol gram item with
             | Some ((NonTerm _) as non_term) when non_term = matched_symbol ->
-                    DA.add state_set {item with next=item.next+1}
+                    add_item s i {item with next=item.next+1}
             | _ -> ()
         in
         DA.iter f (DA.get s item.start)
