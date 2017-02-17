@@ -12,7 +12,7 @@ Library qat
   Path:       src
   #Modules:    Qat
   InternalModules: Parse, Expand
-  BuildDepends: str, extlib
+  BuildDepends: str, extlib, core
 
 Executable qat
   Path:       src
