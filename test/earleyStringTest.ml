@@ -18,26 +18,28 @@ let gram = g "E"
 ;;
 
 let input_string s =
-    let x = Array.of_list (Str.split (Str.regexp " +") s) in
-    let f i = if i >= Array.length x then
-            ""
-        else
-            Array.get x i
-    in
-    f
+    Array.of_list (Str.split (Str.regexp " +") s)
 ;;
 
 let foo s = Printf.printf "%s\n" (str_of_grammar gram)
 
 let foo2 c =
-    let items = earley_match gram (input_string "1 + 1") in
+    let input = input_string "1 + 1" in
+    let items = earley_match gram input in
+    Printf.printf "input: %s\n" (Util.joina ~sep:" • " input);
     Printf.printf "%d\n" (DA.length items);
     Printf.printf "%s\n" (str_of_items gram items)
 ;;
 
+let foo3 c = Printf.printf "%s\n" (string_of_bool
+        (recognize gram (input_string "1 + 1")))
+
 let suite =
-    "earley" >::: [
-        "test_foo" >:: (fun c -> foo c);
-        "test_foo2" >:: (fun c -> foo2 c);
+    "earleyString" >::: [
+        "test_foo" >:: foo;
+        "test_foo2" >:: foo2;
+        "test_foo3" >:: foo3;
     ]
+;;
+
 

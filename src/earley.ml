@@ -70,7 +70,7 @@ let earley_match gram input =
         in
         DA.iteri f gram.rules
     and scan s i j check_term =
-        let curr_input = input i in
+        let curr_input = Array.get input i in
         if check_term curr_input then
             let item = OHS.get (DA.get s i) j in
             (if DA.length s <= i+1 then
@@ -91,16 +91,18 @@ let earley_match gram input =
     let state_set_array = DA.init 1 (fun i -> OHS.make 1) in
     predict state_set_array 0 gram.start_symbol;
     let i = ref 0 in
-    while !i < DA.length state_set_array do
+    while !i <= Array.length input do
         let j = ref 0 in
         let state_set = DA.get state_set_array !i in
         while !j < OHS.length state_set do
             (let item = OHS.get state_set !j in
             match get_next_symbol gram item with
             | None -> complete state_set_array !i !j
-            | Some ((NonTerm _) as non_term)
-                -> predict state_set_array !i non_term
-            | Some (Terminal f) -> scan state_set_array !i !j f
+            | Some ((NonTerm _) as non_term) ->
+                    predict state_set_array !i non_term
+            | Some (Terminal f) ->
+                    if !i < Array.length input then
+                        scan state_set_array !i !j f
             );
             incr j
         done;
@@ -130,3 +132,25 @@ let str_of_items gram state_set_array =
     in
     join_da "\n" (DA.mapi f state_set_array)
 ;;
+
+let recognize gram input =
+    let len = Array.length input in
+    let items = earley_match gram input in
+    if DA.length items >= len + 1 then
+        let rec find state_set i =
+            if i >= OHS.length state_set then
+                false
+            else (let item = OHS.get state_set i in
+                let rule = DA.get gram.rules item.rule in
+                if rule.lhs = gram.start_symbol
+                    && item.start = 0
+                    && item.next = Array.length rule.rhs then
+                    true
+                else
+                    find state_set (i+1))
+        in find (DA.get items len) 0
+    else
+        false
+;;
+
+
