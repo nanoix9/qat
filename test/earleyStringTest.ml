@@ -34,11 +34,17 @@ let foo2 c =
 let foo3 c = Printf.printf "%s\n" (string_of_bool
         (recognize gram (input_string "1 + 1")))
 
+let foo4 c = Printf.printf "%s\n" (
+    match parse gram (input_string "1 + 1") with
+    | None -> "ERROR"
+    | Some t -> str_of_parse_tree (fun x -> x) t)
+
 let suite =
     "earleyString" >::: [
         "test_foo" >:: foo;
         "test_foo2" >:: foo2;
         "test_foo3" >:: foo3;
+        "test_foo4" >:: foo4;
     ]
 ;;
 

@@ -71,8 +71,13 @@ let get_next_symbol gram item :('a symbol) option =
         Some (Array.get rhs item.next)
 ;;
 
+let get_item s i j =
+    OHS.get (DA.get s i) j
+;;
+
 let add_item s i item =
     OHS.add (DA.get s i) item
+;;
 
 let earley_match gram input =
     let predict s i non_term =
@@ -85,15 +90,14 @@ let earley_match gram input =
     and scan s i j check_term =
         let curr_input = Array.get input i in
         if check_term curr_input then
-            let item = OHS.get (DA.get s i) j in
+            let item = get_item s i j in
             (if DA.length s <= i+1 then
                 DA.add s (OHS.make 1);
             add_item s (i+1) {item with next=item.next+1;
                               parsed_symbols=Array.append item.parsed_symbols
                                   [| PTerminal curr_input |]})
     and complete s i j =
-        let state_set = (DA.get s i) in
-        let item = OHS.get state_set j in
+        let item = get_item s i j in
         let matched_symbol = (DA.get gram.rules item.rule).lhs in
         let f item =
             match get_next_symbol gram item with
@@ -156,20 +160,26 @@ let str_of_items str_of_token gram state_set_array :string =
     join_da "\n" (DA.mapi f state_set_array)
 ;;
 
-let partial_matched gram items i =
+let get_partial_matched gram items i :int option =
     if DA.length items >= i + 1 then
         let f item =
             let rule = DA.get gram.rules item.rule in
             rule.lhs = gram.start_symbol
                 && item.start = 0
                 && item.next = Array.length rule.rhs
-        in OHS.exist f (DA.get items i)
+        in OHS.findf f (DA.get items i)
     else
-        false
+        None
+;;
+
+let get_complete_matched gram items input =
+    get_partial_matched gram items (Array.length input)
 ;;
 
 let complete_matched gram items input =
-    partial_matched gram items (Array.length input)
+    match get_complete_matched gram items input with
+    | None -> false
+    | Some _ -> true
 ;;
 
 let recognize gram input =
@@ -177,10 +187,37 @@ let recognize gram input =
     complete_matched gram items input
 ;;
 
-let parse gram input =
-    let items = earley_match gram input in
-    if complete_matched gram items input then
-        true
-    else
-        false
+type 'a parsed_tree =
+    | Leaf of 'a
+    | Tree of ('a parsed_tree) array
 ;;
+
+let rec str_of_parse_tree str_of_leaf tree =
+    match tree with
+    | Leaf lf -> str_of_leaf lf
+    | Tree t ->
+            "[" ^ (Util.joina ~sep:", "
+                      (Array.map (str_of_parse_tree str_of_leaf) t))
+                ^ "]"
+;;
+
+let rec get_parsed_item items item :'a parsed_tree=
+    let pss = item.parsed_symbols in
+    if Array.length pss == 1 then
+        get_parsed_symbol items (Array.get pss 0)
+    else
+        Tree (Array.map (get_parsed_symbol items) pss)
+and get_parsed_symbol items ps =
+    match ps with
+    | PTerminal t -> Leaf t
+    | PNonTerm (i, j) -> get_parsed_item items (get_item items i j)
+;;
+
+let parse gram input :('a parsed_tree) option =
+    let len = Array.length input in
+    let items = earley_match gram input in
+    match get_complete_matched gram items input with
+    | None -> None
+    | Some k -> Some (get_parsed_item items (get_item items len k))
+;;
+
