@@ -32,7 +32,7 @@ let join_da sep da =
 
 let str_of_symbol s :string =
     match s with
-    | Terminal _ -> "<T>"
+    | Terminal _ -> "T"
     | NonTerm s -> s
 ;;
 
@@ -45,10 +45,22 @@ let str_of_grammar g :string =
     join_da "\n" (DA.map str_of_rule g.rules)
 ;;
 
-type item = {
+type 'a parsed_symbol =
+    | PTerminal of 'a
+    | PNonTerm of int * int
+;;
+
+type 'a item = {
     rule: int;
     start: int;
-    next: int}
+    next: int;
+    parsed_symbols: ('a parsed_symbol) array}
+;;
+
+let str_of_parsed_symbol str_of_terminal ps :string =
+    match ps with
+    | PTerminal t -> "\"" ^ str_of_terminal t ^ "\""
+    | PNonTerm (i, j) -> Printf.sprintf "(%d,%d)" i j
 ;;
 
 let get_next_symbol gram item :('a symbol) option =
@@ -66,7 +78,8 @@ let earley_match gram input =
     let predict s i non_term =
         let f k rule =
             if rule.lhs = non_term then
-                add_item s i {rule=k; start=i; next=0}
+                add_item s i {rule=k; start=i; next=0;
+                              parsed_symbols=[||]}
         in
         DA.iteri f gram.rules
     and scan s i j check_term =
@@ -75,7 +88,9 @@ let earley_match gram input =
             let item = OHS.get (DA.get s i) j in
             (if DA.length s <= i+1 then
                 DA.add s (OHS.make 1);
-            add_item s (i+1) {item with next=item.next+1})
+            add_item s (i+1) {item with next=item.next+1;
+                              parsed_symbols=Array.append item.parsed_symbols
+                                  [| PTerminal curr_input |]})
     and complete s i j =
         let state_set = (DA.get s i) in
         let item = OHS.get state_set j in
@@ -83,7 +98,10 @@ let earley_match gram input =
         let f item =
             match get_next_symbol gram item with
             | Some ((NonTerm _) as non_term) when non_term = matched_symbol ->
-                    add_item s i {item with next=item.next+1}
+                    add_item s i {item with next=item.next+1;
+                                  parsed_symbols=Array.append
+                                      item.parsed_symbols
+                                      [| PNonTerm (i, j) |]}
             | _ -> ()
         in
         OHS.iter f (DA.get s item.start)
@@ -111,24 +129,29 @@ let earley_match gram input =
     state_set_array
 ;;
 
-let str_of_item gram item =
+let str_of_item str_of_token gram i item =
+    let str_of_symbol_with_parsed sym ps =
+        str_of_symbol sym ^ str_of_parsed_symbol str_of_token ps in
     let {lhs; rhs} = DA.get gram.rules item.rule in
     let already_matched = Array.sub rhs 0 item.next in
     let to_match = Array.sub rhs item.next (Array.length rhs - item.next) in
-    str_of_symbol lhs
+    string_of_int i ^ ". "
+        ^ str_of_symbol lhs
         ^ " -> "
         ^ Util.joina ~sep:" " (Array.concat [
-            (Array.map str_of_symbol already_matched);
+            (Array.map2 str_of_symbol_with_parsed
+                already_matched item.parsed_symbols);
             [| "•" |];
             (Array.map str_of_symbol to_match)])
         ^ " (" ^ string_of_int item.start ^ ")"
 ;;
 
-let str_of_items gram state_set_array =
+let str_of_items str_of_token gram state_set_array :string =
     let f i state_set =
         Printf.sprintf "====== %d ======\n%s\n" i
             (String.concat "\n"
-                (List.map (str_of_item gram) (OHS.to_list state_set)))
+                (List.mapi (str_of_item str_of_token gram)
+                    (OHS.to_list state_set)))
     in
     join_da "\n" (DA.mapi f state_set_array)
 ;;

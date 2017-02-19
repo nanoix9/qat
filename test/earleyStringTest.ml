@@ -28,7 +28,7 @@ let foo2 c =
     let items = earley_match gram input in
     Printf.printf "input: %s\n" (Util.joina ~sep:" • " input);
     Printf.printf "%d\n" (DA.length items);
-    Printf.printf "%s\n" (str_of_items gram items)
+    Printf.printf "%s\n" (str_of_items (fun x -> x) gram items)
 ;;
 
 let foo3 c = Printf.printf "%s\n" (string_of_bool
