@@ -156,24 +156,31 @@ let str_of_items str_of_token gram state_set_array :string =
     join_da "\n" (DA.mapi f state_set_array)
 ;;
 
-let recognize gram input =
-    let len = Array.length input in
-    let items = earley_match gram input in
-    if DA.length items >= len + 1 then
-        let rec find state_set i =
-            if i >= OHS.length state_set then
-                false
-            else (let item = OHS.get state_set i in
-                let rule = DA.get gram.rules item.rule in
-                if rule.lhs = gram.start_symbol
-                    && item.start = 0
-                    && item.next = Array.length rule.rhs then
-                    true
-                else
-                    find state_set (i+1))
-        in find (DA.get items len) 0
+let partial_matched gram items i =
+    if DA.length items >= i + 1 then
+        let f item =
+            let rule = DA.get gram.rules item.rule in
+            rule.lhs = gram.start_symbol
+                && item.start = 0
+                && item.next = Array.length rule.rhs
+        in OHS.exist f (DA.get items i)
     else
         false
 ;;
 
+let complete_matched gram items input =
+    partial_matched gram items (Array.length input)
+;;
 
+let recognize gram input =
+    let items = earley_match gram input in
+    complete_matched gram items input
+;;
+
+let parse gram input =
+    let items = earley_match gram input in
+    if complete_matched gram items input then
+        true
+    else
+        false
+;;
