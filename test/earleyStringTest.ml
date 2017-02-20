@@ -17,6 +17,13 @@ let gram = g "E"
     |]
 ;;
 
+let gram2 = g "S"
+    [|
+        r "S" [| literal "x" |];
+        r "S" [| n"S"; n"S"; |];
+    |]
+;;
+
 let input_string s =
     Array.of_list (Str.split (Str.regexp " +") s)
 ;;
@@ -39,12 +46,22 @@ let foo4 c = Printf.printf "%s\n" (
     | None -> "ERROR"
     | Some t -> str_of_parse_tree (fun x -> x) t)
 
+let test_ss_defect c =
+    let input = input_string "x x x" in
+    let items = earley_match gram2 input in
+    Printf.printf "input: %s\n" (Util.joina ~sep:" • " input);
+    Printf.printf "%d\n" (DA.length items);
+    Printf.printf "%s\n" (str_of_items (fun x -> x) gram2 items)
+;;
+
 let suite =
     "earleyString" >::: [
         "test_foo" >:: foo;
         "test_foo2" >:: foo2;
         "test_foo3" >:: foo3;
         "test_foo4" >:: foo4;
+
+        "test_ss_defect" >:: test_ss_defect;
     ]
 ;;
 

@@ -32,7 +32,7 @@ let join_da sep da =
 
 let str_of_symbol s :string =
     match s with
-    | Terminal _ -> "T"
+    | Terminal _ -> "_"
     | NonTerm s -> s
 ;;
 
@@ -62,6 +62,34 @@ let str_of_parsed_symbol str_of_terminal ps :string =
     | PTerminal t -> "\"" ^ str_of_terminal t ^ "\""
     | PNonTerm (i, j) -> Printf.sprintf "(%d,%d)" i j
 ;;
+
+let str_of_item str_of_token gram i item =
+    let str_of_symbol_with_parsed sym ps =
+        str_of_symbol sym ^ str_of_parsed_symbol str_of_token ps in
+    let {lhs; rhs} = DA.get gram.rules item.rule in
+    let already_matched = Array.sub rhs 0 item.next in
+    let to_match = Array.sub rhs item.next (Array.length rhs - item.next) in
+    string_of_int i ^ ". "
+        ^ str_of_symbol lhs
+        ^ " -> "
+        ^ Util.joina ~sep:" " (Array.concat [
+            (Array.map2 str_of_symbol_with_parsed
+                already_matched item.parsed_symbols);
+            [| "•" |];
+            (Array.map str_of_symbol to_match)])
+        ^ " (" ^ string_of_int item.start ^ ")"
+;;
+
+let str_of_items str_of_token gram state_set_array :string =
+    let f i state_set =
+        Printf.sprintf "====== %d ======\n%s\n" i
+            (String.concat "\n"
+                (List.mapi (str_of_item str_of_token gram)
+                    (OHS.to_list state_set)))
+    in
+    join_da "\n" (DA.mapi f state_set_array)
+;;
+
 
 let get_next_symbol gram item :('a symbol) option =
     let rhs = (DA.get gram.rules item.rule).rhs in
@@ -131,33 +159,6 @@ let earley_match gram input =
         incr i
     done;
     state_set_array
-;;
-
-let str_of_item str_of_token gram i item =
-    let str_of_symbol_with_parsed sym ps =
-        str_of_symbol sym ^ str_of_parsed_symbol str_of_token ps in
-    let {lhs; rhs} = DA.get gram.rules item.rule in
-    let already_matched = Array.sub rhs 0 item.next in
-    let to_match = Array.sub rhs item.next (Array.length rhs - item.next) in
-    string_of_int i ^ ". "
-        ^ str_of_symbol lhs
-        ^ " -> "
-        ^ Util.joina ~sep:" " (Array.concat [
-            (Array.map2 str_of_symbol_with_parsed
-                already_matched item.parsed_symbols);
-            [| "•" |];
-            (Array.map str_of_symbol to_match)])
-        ^ " (" ^ string_of_int item.start ^ ")"
-;;
-
-let str_of_items str_of_token gram state_set_array :string =
-    let f i state_set =
-        Printf.sprintf "====== %d ======\n%s\n" i
-            (String.concat "\n"
-                (List.mapi (str_of_item str_of_token gram)
-                    (OHS.to_list state_set)))
-    in
-    join_da "\n" (DA.mapi f state_set_array)
 ;;
 
 let get_partial_matched gram items i :int option =
