@@ -27,9 +27,6 @@ let g start_symbol rules = {
     rules = DA.of_array rules}
 ;;
 
-let join_da sep da =
-    String.concat sep (DA.to_list da)
-
 let str_of_symbol s :string =
     match s with
     | Terminal _ -> "_"
@@ -42,7 +39,11 @@ let str_of_rule r :string =
 ;;
 
 let str_of_grammar g :string =
-    join_da "\n" (DA.map str_of_rule g.rules)
+    Util.join_da "\n" (DA.map str_of_rule g.rules)
+;;
+
+let add_rule gram rule :unit =
+    DA.add gram.rules rule
 ;;
 
 type 'a parsed_symbol =
@@ -87,7 +88,7 @@ let str_of_items str_of_token gram state_set_array :string =
                 (List.mapi (str_of_item str_of_token gram)
                     (OHS.to_list state_set)))
     in
-    join_da "\n" (DA.mapi f state_set_array)
+    Util.join_da "\n" (DA.mapi f state_set_array)
 ;;
 
 
@@ -188,33 +189,35 @@ let recognize gram input =
     complete_matched gram items input
 ;;
 
-type 'a parsed_tree =
+type 'a parse_tree =
     | Leaf of 'a
-    | Tree of ('a parsed_tree) array
+    | Tree of int * ('a parse_tree) array
 ;;
 
 let rec str_of_parse_tree str_of_leaf tree =
     match tree with
     | Leaf lf -> str_of_leaf lf
-    | Tree t ->
+    | Tree (i, t) ->
             "[" ^ (Util.joina ~sep:", "
                       (Array.map (str_of_parse_tree str_of_leaf) t))
-                ^ "]"
+                ^ "]("
+                ^ string_of_int i
+                ^ ")"
 ;;
 
-let rec get_parsed_item items item :'a parsed_tree=
+let rec get_parsed_item items item :'a parse_tree=
     let pss = item.parsed_symbols in
-    if Array.length pss == 1 then
+    (*if Array.length pss == 1 then
         get_parsed_symbol items (Array.get pss 0)
-    else
-        Tree (Array.map (get_parsed_symbol items) pss)
+    else*)
+    Tree (item.rule, Array.map (get_parsed_symbol items) pss)
 and get_parsed_symbol items ps =
     match ps with
     | PTerminal t -> Leaf t
     | PNonTerm (i, j) -> get_parsed_item items (get_item items i j)
 ;;
 
-let parse gram input :('a parsed_tree) option =
+let parse gram input :('a parse_tree) option =
     let len = Array.length input in
     let items = earley_match gram input in
     match get_complete_matched gram items input with

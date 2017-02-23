@@ -27,6 +27,7 @@ let suite = "all" >::: [
         ParseTest.suite;
         ExpandTest.suite;
         EarleyStringTest.suite;
+        Expand2Test.suite;
     ]
 ;;
 
