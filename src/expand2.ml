@@ -1,21 +1,10 @@
 open Expr;;
+open Macro;;
 open Earley;;
 module DA = DynArray;;
 module StrMap = Util.StrMap;;
 
 exception MacroErr;;
-
-type macro_elem =
-    | Literal of token
-    | Variable of string
-;;
-
-type macro_expr = macro_elem abs_expr;;
-
-type 'm macro = {
-    pattern: 'm abs_expr;
-    body: 'm abs_expr }
-;;
 
 type ('m, 't) macro_manager = {
     macros: ('m macro) DA.t;
@@ -34,7 +23,10 @@ let lo s = Literal (Op s);;
 
 let new_macro patt body :macro_elem macro =
     let to_atoms = List.map (fun x -> Atom x) in
-    {pattern=ExprList (to_atoms patt); body=ExprList (to_atoms body)}
+    {
+        fix=Infix Left;
+        pattern=ExprList (to_atoms patt);
+        body=ExprList (to_atoms body)}
 ;;
 
 let str_of_macro_elem e :string =
