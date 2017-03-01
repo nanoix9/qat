@@ -31,4 +31,8 @@ let opt_equal cmp o1 o2 =
     | None, None -> true
     | Some v1, Some v2 -> cmp v1 v2
     | _ -> false
+;;
 
+let hashtbl_keys tbl :'a list =
+    Hashtbl.fold (fun k v acc -> k::acc) tbl []
+;;

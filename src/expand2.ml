@@ -8,13 +8,16 @@ exception MacroErr;;
 
 type ('m, 't) macro_manager = {
     macros: ('m macro) DA.t;
-    gram: 't grammar }
+    gram: 't grammar;
+    rules_for_macro: (int, bool) Hashtbl.t }
 ;;
 
 let start_symbol = "E";;
 
 let create_macro_manager () :(macro_elem, Expr.expr) macro_manager =
-    {macros=DA.make 10; gram=g start_symbol [| |]}
+    {macros=DA.make 10;
+    gram=g start_symbol [| |];
+    rules_for_macro=Hashtbl.create 100}
 ;;
 
 let v s = Variable s;;
@@ -46,10 +49,15 @@ let str_of_macro mcr :string =
 ;;
 
 let show_macro_manager mmngr :string =
-    "========= Macros ========="
-        ^ Util.join_da "\n" (DA.map str_of_macro mmngr.macros)
-        ^ "\n========== Grammar ==========\n"
-        ^ str_of_grammar mmngr.gram
+    "========= Macros =========\n"
+    ^ Util.join_da "\n" (DA.map str_of_macro mmngr.macros)
+    ^ "\n========== Grammar ==========\n"
+    ^ str_of_grammar mmngr.gram
+    ^ "\n========== Macro rule indices ==========\n"
+    ^ let keys = List.sort
+            (fun a b -> a - b)
+            (Util.hashtbl_keys mmngr.rules_for_macro) in
+        String.concat ", " (List.map string_of_int keys)
 
 ;;
 
@@ -62,7 +70,8 @@ let get_macro mmngr i :'m macro =
 ;;
 
 let is_macro mmngr i :bool =
-    i < DA.length mmngr.macros
+    (*i < DA.length mmngr.macros*)
+    Hashtbl.mem mmngr.rules_for_macro i
 ;;
 
 let macro_to_op_fix mcr :(expr symbol) array =
@@ -94,26 +103,34 @@ let add_macro_rule mmngr i mcr :unit =
     let p_hat = "P" ^ str_i in
     let p_up = "U" ^ str_i in
     let p_up_arr = [| n p_up |] in
-    let add_rule_g lhs rhs :unit =
-        add_rule g (r lhs rhs)
+    let add_rule_g lhs rhs for_macro :unit =
+        add_rule g (r lhs rhs);
+        if for_macro then
+            let rule_idx = num_rules g - 1 in
+            Hashtbl.add mmngr.rules_for_macro rule_idx true
     in
     let add_rule_p_hat sub :unit =
-        add_rule_g p_hat [| n sub |]
+        add_rule_g p_hat [| n sub |] false
     in
+    let p_up_added = ref false in
     let add_rule_p_up () :unit =
-        add_rule_g p_up [| t (fun x -> true) |];
-        List.iter (fun j -> add_rule_g p_up [| n ("P" ^ string_of_int j) |])
-                (Core.Std.List.range 0 i)
+        if not !p_up_added then
+            add_rule_g p_up [| t (fun x -> true) |] false;
+            List.iter
+                (fun j ->
+                    add_rule_g p_up [| n ("P" ^ string_of_int j) |] false)
+                (Core.Std.List.range 0 i);
+            p_up_added := true
     in
-    add_rule_g start_symbol [| n p_hat |];
+    add_rule_g start_symbol [| n p_hat |] false;
     match mcr.fix with
     | Closed -> (let p_clsd = "C" ^ str_i in
             add_rule_p_hat p_clsd;
-            add_rule_g p_clsd op_fix)
+            add_rule_g p_clsd op_fix true)
     | Infix Non -> (let p_non = "N" ^ str_i in
             add_rule_p_hat p_non;
             let rhs = Array.concat [ p_up_arr; op_fix; p_up_arr ] in
-            add_rule_g p_non rhs);
+            add_rule_g p_non rhs true);
             add_rule_p_up ()
     | Prefix | Infix Right -> (let p_right = "R" ^ str_i in
             let p_right_arr = [| n p_right |] in
@@ -123,8 +140,8 @@ let add_macro_rule mmngr i mcr :unit =
                 | _ -> raise MacroErr
             in
             add_rule_p_hat p_right;
-            add_rule_g p_right (Array.append arr p_right_arr);
-            add_rule_g p_right (Array.append arr p_up_arr));
+            add_rule_g p_right (Array.append arr p_right_arr) true;
+            add_rule_g p_right (Array.append arr p_up_arr)) true;
             add_rule_p_up ()
     | Postfix | Infix Left -> (let p_left = "L" ^ str_i in
             let p_left_arr = [| n p_left |] in
@@ -134,8 +151,8 @@ let add_macro_rule mmngr i mcr :unit =
                 | _ -> raise MacroErr
             in
             add_rule_p_hat p_left;
-            add_rule_g p_left (Array.append p_left_arr arr);
-            add_rule_g p_left (Array.append p_up_arr arr));
+            add_rule_g p_left (Array.append p_left_arr arr) true;
+            add_rule_g p_left (Array.append p_up_arr arr)) true;
             add_rule_p_up ()
 ;;
 
@@ -201,6 +218,19 @@ let rec substitute_vars (vars :expr StrMap.t) (body :macro_expr) :expr =
 let expand_macro (mcr :'m macro) (exp :expr) :expr =
     let vars = extract_vars mcr.pattern exp in
     substitute_vars vars mcr.body
+;;
+
+let rec simplify_parse_tree mmngr ptree :'a parse_tree =
+    let f = simplify_parse_tree mmngr in
+    match ptree with
+    | (Leaf _) as lf -> lf
+    | Tree (i, arr) ->
+            if is_macro mmngr i then
+                Tree (i, (Array.map f arr))
+            else if Array.length arr <> 1 then
+                raise MacroErr
+            else
+                f (Array.get arr 0)
 ;;
 
 let rec expand_non_macro mmngr i arr :expr =

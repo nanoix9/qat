@@ -90,7 +90,11 @@ let show_grammar () = Util.println (show_macro_manager mmngr);;
 
 let test_match () =
     let pt = parse_pattern mmngr (e [id "foo"; op "+"; id "bar"; op "-"; i 10]) in
-    Util.println (Earley.str_of_parse_tree str_of_expr pt)
+    Printf.printf "------- Parsed --------\n%s\n"
+            (Earley.str_of_parse_tree str_of_expr pt);
+    let spt = simplify_parse_tree mmngr pt in
+    Printf.printf "------- Simplified --------\n%s\n"
+            (Earley.str_of_parse_tree str_of_expr spt)
 ;;
 
 let macro_main s =

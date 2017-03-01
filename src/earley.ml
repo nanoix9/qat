@@ -39,7 +39,12 @@ let str_of_rule r :string =
 ;;
 
 let str_of_grammar g :string =
-    Util.join_da "\n" (DA.map str_of_rule g.rules)
+    let f i r = string_of_int i ^ ".\t" ^ str_of_rule r in
+    Util.join_da "\n" (DA.mapi f g.rules)
+;;
+
+let num_rules gram :int =
+    DA.length gram.rules
 ;;
 
 let add_rule gram rule :unit =
