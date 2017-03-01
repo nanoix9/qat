@@ -142,7 +142,7 @@ let earley_match gram input =
     let state_set_array = DA.init 1 (fun i -> OHS.make 1) in
     predict state_set_array 0 gram.start_symbol;
     let i = ref 0 in
-    while !i <= Array.length input do
+    while !i < DA.length state_set_array do
         let j = ref 0 in
         let state_set = DA.get state_set_array !i in
         while !j < OHS.length state_set do

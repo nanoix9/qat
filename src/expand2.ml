@@ -65,7 +65,7 @@ let is_macro mmngr i :bool =
     i < DA.length mmngr.macros
 ;;
 
-let macro_to_grammar_rule i mcr :expr rule =
+let macro_to_op_fix mcr :(expr symbol) array =
     let f m :(expr symbol) =
         match m with
         | Atom a ->
@@ -76,18 +76,75 @@ let macro_to_grammar_rule i mcr :expr rule =
     in
     match mcr.pattern with
     | Atom a -> raise MacroErr
-    | ExprList el ->
-            r ("M" ^ string_of_int i) (Array.of_list (List.map f el))
+    | ExprList el -> let sub =
+        (let arr = Array.of_list el in
+        match mcr.fix with
+        | Closed -> arr
+        | Infix _ -> Array.sub arr 1 (Array.length arr - 2)
+        | Prefix -> Array.sub arr 0 (Array.length arr - 1)
+        | Postfix -> Array.sub arr 1 (Array.length arr - 1))
+        in
+        Array.map f sub
+;;
+
+let add_macro_rule mmngr i mcr :unit =
+    let g = mmngr.gram in
+    let op_fix = macro_to_op_fix mcr in
+    let str_i = string_of_int i in
+    let p_hat = "P" ^ str_i in
+    let p_up = "U" ^ str_i in
+    let p_up_arr = [| n p_up |] in
+    let add_rule_g lhs rhs :unit =
+        add_rule g (r lhs rhs)
+    in
+    let add_rule_p_hat sub :unit =
+        add_rule_g p_hat [| n sub |]
+    in
+    let add_rule_p_up () :unit =
+        add_rule_g p_up [| t (fun x -> true) |];
+        List.iter (fun j -> add_rule_g p_up [| n ("P" ^ string_of_int j) |])
+                (Core.Std.List.range 0 i)
+    in
+    add_rule_g start_symbol [| n p_hat |];
+    match mcr.fix with
+    | Closed -> (let p_clsd = "C" ^ str_i in
+            add_rule_p_hat p_clsd;
+            add_rule_g p_clsd op_fix)
+    | Infix Non -> (let p_non = "N" ^ str_i in
+            add_rule_p_hat p_non;
+            let rhs = Array.concat [ p_up_arr; op_fix; p_up_arr ] in
+            add_rule_g p_non rhs);
+            add_rule_p_up ()
+    | Prefix | Infix Right -> (let p_right = "R" ^ str_i in
+            let p_right_arr = [| n p_right |] in
+            let arr = match mcr.fix with
+                | Prefix -> op_fix
+                | Infix Right -> Array.append p_up_arr op_fix
+                | _ -> raise MacroErr
+            in
+            add_rule_p_hat p_right;
+            add_rule_g p_right (Array.append arr p_right_arr);
+            add_rule_g p_right (Array.append arr p_up_arr));
+            add_rule_p_up ()
+    | Postfix | Infix Left -> (let p_left = "L" ^ str_i in
+            let p_left_arr = [| n p_left |] in
+            let arr = match mcr.fix with
+                | Prefix -> op_fix
+                | Infix Left -> Array.append op_fix p_up_arr
+                | _ -> raise MacroErr
+            in
+            add_rule_p_hat p_left;
+            add_rule_g p_left (Array.append p_left_arr arr);
+            add_rule_g p_left (Array.append p_up_arr arr));
+            add_rule_p_up ()
 ;;
 
 let build_grammar mmngr :unit =
     let f i mcr :unit =
-        let rule = macro_to_grammar_rule i mcr in
-        add_rule mmngr.gram rule;
-        add_rule mmngr.gram (r start_symbol [| rule.lhs |]);
+        add_macro_rule mmngr i mcr;
         ()
     in
-    add_rule mmngr.gram (r start_symbol [| t (fun x -> true) |]);
+    (*add_rule mmngr.gram (r start_symbol [| t (fun x -> true) |]);*)
     DA.iteri f mmngr.macros
 ;;
 

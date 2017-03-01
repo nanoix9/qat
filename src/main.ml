@@ -86,9 +86,16 @@ let id s :expr = Atom (Id s);;
 let op s :expr = Atom (Op s);;
 let i n :expr = Atom (Imm (Int n));;
 
-let macro_main s = Util.println (show_macro_manager mmngr);
+let show_grammar () = Util.println (show_macro_manager mmngr);;
+
+let test_match () =
     let pt = parse_pattern mmngr (e [id "foo"; op "+"; id "bar"; op "-"; i 10]) in
     Util.println (Earley.str_of_parse_tree str_of_expr pt)
+;;
+
+let macro_main s =
+    show_grammar ();
+    test_match ()
 ;;
 
 (*=========== main ===========*)
