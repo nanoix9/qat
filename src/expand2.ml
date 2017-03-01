@@ -34,7 +34,7 @@ let new_macro patt body :macro_elem macro =
 
 let str_of_macro_elem e :string =
     match e with
-    | Literal t -> "L(" ^ str_of_token t ^ ")"
+    | Literal lit -> "L(" ^ str_of_token lit ^ ")"
     | Variable v -> "V(" ^ v ^ ")"
 ;;
 
@@ -79,7 +79,7 @@ let macro_to_op_fix mcr :(expr symbol) array =
         match m with
         | Atom a ->
                 (match a with
-                | Literal lit -> t (fun x -> x = Atom lit)
+                | Literal lit -> t (str_of_token lit) (fun x -> x = Atom lit)
                 | Variable v -> n start_symbol)
         | ExprList _ -> raise MacroErr
     in
@@ -115,7 +115,7 @@ let add_macro_rule mmngr i mcr :unit =
     let p_up_added = ref false in
     let add_rule_p_up () :unit =
         if not !p_up_added then
-            add_rule_g p_up [| t (fun x -> true) |] false;
+            add_rule_g p_up [| t "e" (fun x -> true) |] false;
             List.iter
                 (fun j ->
                     add_rule_g p_up [| n ("P" ^ string_of_int j) |] false)
@@ -180,7 +180,7 @@ let parse_pattern mmngr exp :'a parse_tree =
     Util.println (str_of_items str_of_expr mmngr.gram (earley_match mmngr.gram arr));
     match parse mmngr.gram arr with
     | None -> raise MacroErr
-    | Some t -> t
+    | Some pt -> pt
 ;;
 
 let rec extract_vars_list (patt_list :macro_expr list)
@@ -195,7 +195,7 @@ let rec extract_vars_list (patt_list :macro_expr list)
     | _ -> raise MacroErr
 and extract_vars_atom (patt :macro_elem) (exp :expr) :expr StrMap.t =
     match patt, exp with
-    | Literal t, Atom a when t = a -> StrMap.empty
+    | Literal lit, Atom a when lit = a -> StrMap.empty
     | Variable v, _ -> StrMap.add v exp StrMap.empty
     | _ -> raise MacroErr
 and extract_vars (pattern :macro_expr) (exp :expr) :expr StrMap.t =
@@ -210,7 +210,7 @@ let rec substitute_vars (vars :expr StrMap.t) (body :macro_expr) :expr =
     match body with
     | Atom a ->
             (match a with
-            | Literal t -> Atom t
+            | Literal lit -> Atom lit
             | Variable v -> StrMap.find v vars)
     | ExprList mel -> ExprList (List.map (substitute_vars vars) mel)
 ;;
@@ -249,7 +249,7 @@ and expand_rule mmngr i arr :expr =
 and expand_parse_tree mmngr ptree :expr =
     match ptree with
     | Leaf lf -> lf
-    | Tree (i, t) -> expand_rule mmngr i t
+    | Tree (i, arr) -> expand_rule mmngr i arr
 ;;
 
 let expand mmngr exp =

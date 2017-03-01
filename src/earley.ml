@@ -2,7 +2,7 @@ module DA = DynArray;;
 module OHS = Basic.OrderedHashset;;
 
 type 'a symbol =
-    | Terminal of ('a -> bool)
+    | Terminal of string * ('a -> bool)
     | NonTerm of string
 ;;
 
@@ -18,7 +18,7 @@ type 'a grammar = {
 
 let n s = NonTerm s;;
 
-let t f = Terminal f;;
+let t n f = Terminal (n, f);;
 
 let r lhs rhs = { lhs = n lhs; rhs = rhs };;
 
@@ -29,7 +29,7 @@ let g start_symbol rules = {
 
 let str_of_symbol s :string =
     match s with
-    | Terminal _ -> "_"
+    | Terminal (n, _) -> n
     | NonTerm s -> s
 ;;
 
@@ -156,7 +156,7 @@ let earley_match gram input =
             | None -> complete state_set_array !i !j
             | Some ((NonTerm _) as non_term) ->
                     predict state_set_array !i non_term
-            | Some (Terminal f) ->
+            | Some (Terminal (n, f)) ->
                     if !i < Array.length input then
                         scan state_set_array !i !j f
             );

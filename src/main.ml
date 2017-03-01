@@ -17,8 +17,8 @@ let parse_main () =
 (*=========== test Earley ============*)
 let parse = Earley.parse;;
 
-let const value = t (fun x -> value);;
-let literal name = t (fun x -> x = name);;
+let const value = t "_" (fun x -> value);;
+let literal name = t name (fun x -> x = name);;
 
 let gram = g "E"
     [|
