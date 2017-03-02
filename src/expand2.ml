@@ -4,8 +4,6 @@ open Earley;;
 module DA = DynArray;;
 module StrMap = Util.StrMap;;
 
-exception MacroErr;;
-
 type ('m, 't) macro_manager = {
     macros: ('m macro) DA.t;
     gram: 't grammar;
@@ -23,30 +21,6 @@ let create_macro_manager () :(macro_elem, Expr.expr) macro_manager =
 let v s = Variable s;;
 let ls s = Literal (Id s);;
 let lo s = Literal (Op s);;
-
-let new_macro patt body :macro_elem macro =
-    let to_atoms = List.map (fun x -> Atom x) in
-    {
-        fix=Infix Left;
-        pattern=ExprList (to_atoms patt);
-        body=ExprList (to_atoms body)}
-;;
-
-let str_of_macro_elem e :string =
-    match e with
-    | Literal lit -> "L(" ^ str_of_token lit ^ ")"
-    | Variable v -> "V(" ^ v ^ ")"
-;;
-
-let str_of_macro_expr e :string =
-    str_of_abs_expr str_of_macro_elem e
-;;
-
-let str_of_macro mcr :string =
-    "MACRO:\nPATTERN:\n" ^ str_of_macro_expr mcr.pattern
-            ^ "\nBODY:\n" ^ str_of_macro_expr mcr.body
-            ^ "\n"
-;;
 
 let show_macro_manager mmngr :string =
     "========= Macros =========\n"
