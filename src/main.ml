@@ -1,3 +1,4 @@
+open Printf
 open Expr
 open Parse
 open Earley
@@ -76,8 +77,8 @@ let earley_string_main () =
 (*========== test macro expanding ============*)
 let mmngr =
     let m = create_macro_manager () in
-    add_macro m (new_macro [v"x"; lo"+"; v"y"] [ls"add"; v"x"; v"y"]);
-    add_macro m (new_macro [v"x"; lo"-"; v"y"] [ls"sub"; v"x"; v"y"]);
+    add_macro m (new_macro (Infix Right) [v"x"; lo"+"; v"y"] [ls"add"; v"x"; v"y"]);
+    add_macro m (new_macro (Infix Right) [v"x"; lo"-"; v"y"] [ls"sub"; v"x"; v"y"]);
     build_grammar m;
     m
 ;;
@@ -98,9 +99,25 @@ let test_match () =
             (Earley.str_of_parse_tree str_of_expr spt)
 ;;
 
+let foobar () =
+    let prcdn = make_precedences () in
+    let plus = (new_macro (Infix Right)
+            [v"x"; lo"+"; v"y"]
+            [ls"add"; v"x"; v"y"])
+    in
+    let sub = (new_macro (Infix Right)
+            [v"x"; lo"-"; v"y"]
+            [ls"sub"; v"x"; v"y"])
+    in
+    Macro.add_macro prcdn plus None None;
+    Macro.add_macro prcdn sub (Some plus.id) None;
+    printf "%s\n" (str_of_precedences prcdn)
+;;
+
 let macro_main s =
-    show_grammar ();
-    test_match ()
+    (*show_grammar ();*)
+    (*test_match ()*)
+    foobar ()
 ;;
 
 (*=========== main ===========*)
