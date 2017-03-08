@@ -36,3 +36,9 @@ let opt_equal cmp o1 o2 =
 let hashtbl_keys tbl :'a list =
     Hashtbl.fold (fun k v acc -> k::acc) tbl []
 ;;
+
+let sgn i :int = match i with
+    | 0 -> 0
+    | x when x > 0 -> 1
+    | _ -> -1
+;;

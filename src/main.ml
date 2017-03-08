@@ -3,6 +3,7 @@ open Expr
 open Parse
 open Earley
 open Macro
+open PrettyMacro
 open Expand2
 
 (*=========== test parse ============*)
@@ -120,6 +121,42 @@ let macro_main s =
     foobar ()
 ;;
 
+(*========== Graph ==========*)
+
+let print_graph () =
+    let strs_of_v v = [string_of_int v; ] in
+    let g = G.create () in
+    let v0 = G.V.create 0 in
+    let v1 = G.V.create 10 in
+    let v2 = G.V.create 20 in
+    let v3 = G.V.create 30 in
+    let v4 = G.V.create 40 in
+    let v5 = G.V.create 50 in
+    let v6 = G.V.create 60 in
+    G.add_vertex g v0;
+    G.add_vertex g v1;
+    G.add_vertex g v2;
+
+    G.add_edge g v0 v1;
+    G.add_edge g v1 v2;
+    G.add_edge g v1 v3;
+    G.add_edge g v1 v4;
+    G.add_edge g v3 v5;
+    G.add_edge g v3 v6;
+    printf "%s\n" (PrettyMacro.str_of_dag strs_of_v g)
+    (*let plt = make_plotter () in*)
+    (*(*expand_canvas_opt plt.canvas 5 5;*)*)
+    (*draw_point plt.canvas 2 3 '*';*)
+    (*append_sym plt 'a';*)
+    (*append_sym plt 'b';*)
+    (*append_sym plt 'c';*)
+    (*draw_line plt.canvas (8,8) (1,1) 5;*)
+    (*draw_line plt.canvas (8,8) (1,0) 5;*)
+    (*draw_line plt.canvas (8,8) (0,1) 5;*)
+    (*draw_line plt.canvas (8,8) (0,-1) 5;*)
+    (*printf "%s\n" (get_content plt.canvas)*)
+;;
+
 (*=========== main ===========*)
 let main () =
     ();
@@ -127,7 +164,9 @@ let main () =
 
     (*earley_string_main ();*)
 
-    macro_main ()
+    (*macro_main ()*)
+
+    print_graph ()
 ;;
 
 let () = main ();;
