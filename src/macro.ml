@@ -1,4 +1,6 @@
 open Expr;;
+open Txtplot;;
+module S = Core.Std.String;;
 module DA = DynArray;;
 module HT = Hashtbl;;
 
@@ -127,6 +129,76 @@ type 'm precedences = {
     graph: G.t}
 ;;
 
+let get_start_node g :G.V.t =
+    let nodes = G.fold_vertex
+        (fun v acc -> if G.pred g v = [] then v::acc else acc)
+        g []
+    in
+    if List.length nodes <> 1 then raise MacroErr
+    else List.hd nodes
+;;
+
+let str_of_dag strs_of_vlabel g :string =
+    let plt = Txtplot.make_plotter () in
+    let label_texts = DA.make 1 in
+    let visited = HT.create 100 in
+    let show_vert v :int * int =
+        let lines = strs_of_vlabel v in
+        List.iter (fun s -> DA.add label_texts s) lines;
+        DA.add label_texts "";
+        1, (List.length lines + 1)
+    in
+    let rec f v (x, y) =
+        if HT.mem visited v then raise MacroErr;
+        (*Printf.printf "visiting: %d\n" v;*)
+        HT.add visited v true;
+        Txtplot.draw_point plt.canvas x y '*';
+        let _, h = show_vert v in
+        let y_next = y + h in
+        match G.succ g v with
+        | [] -> (x+1, y_next)
+        | lst -> List.fold_left
+                (fun (xi, yi) v ->
+                    Txtplot.connect plt.canvas (x, y) (xi, yi);
+                    f v (xi, yi))
+                (x, y_next) (G.succ g v)
+    in
+    let w, _ = f (get_start_node g) (0, 0) in
+    let len = DA.length label_texts in
+    Txtplot.expand_height plt.canvas len;
+    (*let w = get_content_width plt.canvas in*)
+    S.concat ~sep:"\n" (List.map2
+        (fun a b -> (S.sub a 0 w) ^ " " ^  b)
+        (Core.Std.List.sub (Txtplot.get_lines plt.canvas) 0 len)
+        (DA.to_list label_texts))
+;;
+
+(*let str_of_dag2 str_of_vlabel g :string =*)
+    (*let is_ready node g visited :bool =*)
+        (*G.fold_pred (fun v acc -> acc && (HT.mem visited v)) g node true*)
+    (*in*)
+    (*let get_ready_nodes g visited :'a list =*)
+        (*G.fold_vertex*)
+            (*(fun v acc -> if is_ready v g visited then v::acc else acc)*)
+            (*g []*)
+    (*in*)
+    (*let ready = Queue.create () in*)
+    (*let visited = HT.create 100 in*)
+    (*let out = DA.make 100 in*)
+    (*List.iter (fun n -> Queue.add n ready) (get_ready_nodes g visited);*)
+    (*while not (Queue.is_empty ready) do*)
+        (*let v = Queue.take ready in*)
+        (*if HT.mem visited v then raise MacroErr;*)
+        (*DA.add out (str_of_vlabel (G.V.label v));*)
+        (*HT.add visited v true;*)
+        (*G.iter_succ*)
+            (*(fun n -> if is_ready n g visited then Queue.add n ready else ())*)
+            (*g v*)
+    (*done;*)
+    (*"grahp: " ^ string_of_int (G.nb_vertex g) ^ "\n"*)
+        (*^ (Util.join_da "\n|\n" out)*)
+(*;;*)
+
 let str_of_precedences {dict;macros;groups;graph} :string =
     let f i imacro :string =
         string_of_int i ^ ".\t[" ^ string_of_int imacro ^ "] " ^ str_of_macro_id (DA.get macros imacro).macro.id
@@ -134,7 +206,19 @@ let str_of_precedences {dict;macros;groups;graph} :string =
     let h i (grp:precedence_group) :string =
         string_of_int i ^ ".\n\t" ^ (Util.join_da "\n\t" (DA.mapi f grp.macros))
     in
-    Util.join_da "\n" (DA.mapi h groups)
+    (*Util.join_da "\n" (DA.mapi h groups)*)
+    let f2 i imacro :string =
+        "    " ^ str_of_macro_id (DA.get macros imacro).macro.id
+    in
+    let strs_of_vert v :string list =
+        let igrp = (G.V.label v) in
+        string_of_int igrp ::
+            (List.mapi f2 (DA.to_list (DA.get groups igrp).macros))
+    in
+    "=========== List of Precedences and Macros ===========\n"
+        ^ Util.join_da "\n" (DA.mapi h groups)
+        ^ "\n=========== Precedence Graph of Macros ===========\n"
+        ^ str_of_dag strs_of_vert graph
 ;;
 
 let add_precedence_group {dict;macros;groups;graph}

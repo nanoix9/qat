@@ -3,7 +3,6 @@ open Expr
 open Parse
 open Earley
 open Macro
-open PrettyMacro
 open Expand2
 
 (*=========== test parse ============*)
@@ -143,7 +142,7 @@ let print_graph () =
     G.add_edge g v1 v4;
     G.add_edge g v3 v5;
     G.add_edge g v3 v6;
-    printf "%s\n" (PrettyMacro.str_of_dag strs_of_v g)
+    printf "%s\n" (str_of_dag strs_of_v g)
     (*let plt = make_plotter () in*)
     (*(*expand_canvas_opt plt.canvas 5 5;*)*)
     (*draw_point plt.canvas 2 3 '*';*)
@@ -164,9 +163,9 @@ let main () =
 
     (*earley_string_main ();*)
 
-    (*macro_main ()*)
+    macro_main ()
 
-    print_graph ()
+    (*print_graph ()*)
 ;;
 
 let () = main ();;

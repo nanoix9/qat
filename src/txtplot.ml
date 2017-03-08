@@ -1,5 +1,8 @@
-open Macro;;
 module S = Core.Std.String;;
+module DA = DynArray;;
+module HT = Hashtbl;;
+
+exception PlotErr;;
 
 type plotter = {canvas:(bytes DA.t); mutable max_x: int; mutable max_y: int}
 ;;
@@ -71,7 +74,7 @@ let get_content_width can : int =
 ;;
 
 let draw_point can x y label :unit =
-    if x < 0 || y < 0 then raise MacroErr;
+    if x < 0 || y < 0 then raise PlotErr;
     expand_canvas_opt can (x+1) (y+1);
     S.set (DA.get can x) y label
 ;;
@@ -82,7 +85,7 @@ let draw_line can (x0, y0) (dx, dy) length :unit =
         | 0, 1 | 0, -1 -> '|'
         | 1, 1 | -1, -1 -> '\\'
         | -1, 1 | 1, -1 -> '/'
-        | _ -> raise MacroErr
+        | _ -> raise PlotErr
     in
     let rec f x y cnt =
         if cnt <= 0 then ()
@@ -113,75 +116,3 @@ let append_sym plt label :unit =
     plt.max_y <- plt.max_y + 1
 ;;
 
-(*let append_node plt label :unit =*)
-    (*let x = plt.max_x in*)
-    (*let y = plt.max_y in*)
-let get_start_node g :G.V.t =
-    let nodes = G.fold_vertex
-        (fun v acc -> if G.pred g v = [] then v::acc else acc)
-        g []
-    in
-    if List.length nodes <> 1 then raise MacroErr
-    else List.hd nodes
-;;
-
-let str_of_dag strs_of_vlabel g :string =
-    let plt = make_plotter () in
-    let label_texts = DA.make 1 in
-    let visited = HT.create 100 in
-    let show_vert v :int * int =
-        let lines = strs_of_vlabel v in
-        List.iter (fun s -> DA.add label_texts s) lines;
-        DA.add label_texts "";
-        1, (List.length lines + 1)
-    in
-    let rec f v (x, y) =
-        if HT.mem visited v then raise MacroErr;
-        (*Printf.printf "visiting: %d\n" v;*)
-        HT.add visited v true;
-        draw_point plt.canvas x y '*';
-        let _, h = show_vert v in
-        let y_next = y + h in
-        match G.succ g v with
-        | [] -> (x+1, y_next)
-        | lst -> List.fold_left
-                (fun (xi, yi) v ->
-                    connect plt.canvas (x, y) (xi, yi);
-                    f v (xi, yi))
-                (x, y_next) (G.succ g v)
-    in
-    let w, _ = f (get_start_node g) (0, 0) in
-    let len = DA.length label_texts in
-    expand_height plt.canvas len;
-    (*let w = get_content_width plt.canvas in*)
-    S.concat ~sep:"\n" (List.map2
-        (fun a b -> (S.sub a 0 w) ^ " " ^  b)
-        (Core.Std.List.sub (get_lines plt.canvas) 0 len)
-        (DA.to_list label_texts))
-;;
-
-let str_of_dag2 str_of_vlabel g :string =
-    let is_ready node g visited :bool =
-        G.fold_pred (fun v acc -> acc && (HT.mem visited v)) g node true
-    in
-    let get_ready_nodes g visited :'a list =
-        G.fold_vertex
-            (fun v acc -> if is_ready v g visited then v::acc else acc)
-            g []
-    in
-    let ready = Queue.create () in
-    let visited = HT.create 100 in
-    let out = DA.make 100 in
-    List.iter (fun n -> Queue.add n ready) (get_ready_nodes g visited);
-    while not (Queue.is_empty ready) do
-        let v = Queue.take ready in
-        if HT.mem visited v then raise MacroErr;
-        DA.add out (str_of_vlabel (G.V.label v));
-        HT.add visited v true;
-        G.iter_succ
-            (fun n -> if is_ready n g visited then Queue.add n ready else ())
-            g v
-    done;
-    "grahp: " ^ string_of_int (G.nb_vertex g) ^ "\n"
-        ^ (Util.join_da "\n|\n" out)
-;;
