@@ -74,11 +74,14 @@ let macro_to_op_fix mcr :(expr symbol) array =
         Array.map f sub
 ;;
 
+let expr_terminal_arr = [| t "e" (fun x -> true) |];;
+
 let add_pgroup_rules mmngr p :unit =
     let g = mmngr.gram in
-    let str_p = string_of_int p in
-    let p_hat = "P" ^ str_p in
-    let p_up = "U" ^ str_p in
+    let get_p_hat p = "P" ^ string_of_int p in
+    let get_p_up p = "U" ^ string_of_int p in
+    let p_hat = get_p_hat p in
+    let p_up = get_p_up p in
     let p_up_arr = [| n p_up |] in
     let p_up_added = ref false in
     let add_rule_g lhs rhs for_macro :unit =
@@ -88,20 +91,22 @@ let add_pgroup_rules mmngr p :unit =
             Hashtbl.add mmngr.rules_for_macro rule_idx true
     in
     let add_rule_p_up () :unit =
-        if not !p_up_added then
-            add_rule_g p_up [| t "e" (fun x -> true) |] false;
+        Printf.printf "p up added: %d %s\n" p (string_of_bool !p_up_added);
+        if not !p_up_added then begin
             List.iter
-                (fun j ->
-                    add_rule_g p_up [| n ("P" ^ string_of_int j) |] false)
-                (Core.Std.List.range 0 p);
+                (function
+                    | 0 -> add_rule_g p_up expr_terminal_arr false
+                    | j -> add_rule_g p_up [| n (get_p_hat j) |] false)
+                (get_higher_pgroups mmngr.prcdn p);
             p_up_added := true
+        end
     in
     let add_rule_p_hat sub :unit =
         add_rule_g p_hat [| n sub |] false
     in
     let add_macro_rule mcr :unit =
         let op_fix = macro_to_op_fix mcr in
-        let str_i = str_of_macro_id mcr.id in
+        let str_i = string_of_int (get_macro_index mmngr.prcdn mcr.id) in
         add_rule_g start_symbol [| n p_hat |] false;
         match mcr.fix with
         | Closed -> (let p_clsd = "C" ^ str_i in
@@ -135,13 +140,16 @@ let add_pgroup_rules mmngr p :unit =
                 add_rule_g p_left (Array.append p_up_arr arr) true;
                 add_rule_p_up ())
     in
-    DA.iter add_macro_rule (Macro.get_macros_in_pgroup mmngr.prcdn p)
+    DA.iter add_macro_rule (get_macros_in_pgroup mmngr.prcdn p)
 ;;
 
 let build_grammar mmngr :unit =
     let f i :unit =
-        (*add_pgroup_rules mmngr i*)
-        Printf.printf "dfs: %d\n" i
+        Printf.printf "dfs: %d\n" i;
+        match i with
+        (*precedence 0 is a special one for expr terminal*)
+        | 0 -> add_rule mmngr.gram (r start_symbol expr_terminal_arr)
+        | _ -> add_pgroup_rules mmngr i
     in
     (*add_rule mmngr.gram (r start_symbol [| t (fun x -> true) |]);*)
     Macro.iter_pgroup f mmngr.prcdn;

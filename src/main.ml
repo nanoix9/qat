@@ -87,10 +87,10 @@ let mmngr =
             [ls"slash"; v"x"; v"y"] in
     let m5 = new_macro (Infix Right) [v"x"; lo"**"; v"y"]
             [ls"pow"; v"x"; v"y"] in
-    add_macro_between m m1 None None;
+    add_macro_between m m3 None None;
+    add_macro_between m m1 (Some m3.id) None;
     add_macro_equals m m2 m1.id;
-    add_macro_between m m3 None (Some m1.id);
-    add_macro_between m m5 None (Some m3.id);
+    (*add_macro_between m m5 None (Some m3.id);*)
     add_macro_between m m4 (Some m3.id) None;
     build_grammar m;
     m

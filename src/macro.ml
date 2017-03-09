@@ -151,7 +151,7 @@ let str_of_dag strs_of_vlabel g :string =
         DA.add label_texts "";
         1, (List.length lines + 1)
     in
-    let rec f v (x, y) =
+    let rec draw v (x, y) =
         if HT.mem visited v then raise MacroErr;
         Printf.printf "visiting: %d, succ: %s\n" v (S.concat ~sep:"," (List.map string_of_int (G.succ g v)));
         HT.add visited v true;
@@ -163,10 +163,10 @@ let str_of_dag strs_of_vlabel g :string =
         | lst -> List.fold_left
                 (fun (xi, yi) v ->
                     Txtplot.connect plt.canvas (x, y) (xi, yi);
-                    f v (xi, yi))
+                    draw v (xi, yi))
                 (x, y_next) (G.succ g v)
     in
-    let w, _ = f (get_start_node g) (0, 0) in
+    let w, _ = draw (get_start_node g) (0, 0) in
     let len = DA.length label_texts in
     Txtplot.expand_height plt.canvas len;
     (*let w = get_content_width plt.canvas in*)
@@ -239,17 +239,41 @@ let get_macros_in_pgroup
     DA.map (fun i -> (DA.get prcdn.macros i).macro) grp.macros
 ;;
 
+let get_macro_index prcdn mcr_id :int =
+    HT.find prcdn.dict mcr_id
+;;
+
 let get_pgroup_index_for_macro prcdn mcr_id :int =
     let {dict;macros;groups;graph} = prcdn in
-    let imcr = HT.find prcdn.dict mcr_id in
+    let imcr = get_macro_index prcdn mcr_id in
     (DA.get macros imcr).group
 ;;
 
+let get_higher_pgroups prcdn p :int list =
+    let {dict;macros;groups;graph} = prcdn in
+    let rec add_pred v =
+        match G.pred graph v with
+        | [] -> []
+        | x -> List.concat (x :: List.map add_pred x)
+    in
+    add_pred (DA.get groups p).vert
+;;
+
+let get_relation prcdn a b :int option =
+    Some 1
+;;
+
 (* TODO: check to make sure `high` is tighter than `low` if both set *)
-let add_precedence_group {dict;macros;groups;graph}
+let add_precedence_group prcdn
         (high :int option)
         (low :int option)
         :int * precedence_group =
+    let {dict;macros;groups;graph} = prcdn in
+    (match high, low with
+    | Some h, Some l -> (match get_relation prcdn high low with
+            | Some r when r > 0 -> ()
+            | _ -> raise MacroErr)
+    | _ -> ());
     let get_vert i =
         let {vert;_} = DA.get groups i in vert
     in
@@ -312,7 +336,7 @@ let add_macro_between prcdn mcr
         (high :(macro_name list) option)
         (low :(macro_name list) option)
         :unit =
-        (*Printf.printf "%s\n" (str_of_precedences prcdn);*)
+    (*Printf.printf "%s\n" (str_of_precedences prcdn);*)
     let p_high = match high with
         | None -> Some 0
         | Some i -> Some (get_pgroup_index_for_macro prcdn i)
@@ -326,9 +350,9 @@ let add_macro_between prcdn mcr
     add_macro_between_helper prcdn mcr p_high p_low
 ;;
 
-let iter_pgroup (f :int -> unit) (prcdn :'m precedences) :unit =
+let iter_pgroup (f :G.V.label -> unit) (prcdn :'m precedences) :unit =
     let g = prcdn.graph in
-    Dfs.prefix_component f g (get_start_node g)
+    Dfs.prefix_component (fun v -> f (G.V.label v)) g (get_start_node g)
 ;;
 
 let make_precedences () = let p = {
