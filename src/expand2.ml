@@ -5,7 +5,7 @@ module DA = DynArray;;
 module StrMap = Util.StrMap;;
 
 type ('m, 't) macro_manager = {
-    macros: ('m macro) DA.t;
+    prcdn: 'm precedences; (* macro precedence hierarchy *)
     gram: 't grammar;
     rules_for_macro: (int, bool) Hashtbl.t }
 ;;
@@ -13,7 +13,7 @@ type ('m, 't) macro_manager = {
 let start_symbol = "E";;
 
 let create_macro_manager () :(macro_elem, Expr.expr) macro_manager =
-    {macros=DA.make 10;
+    {prcdn=make_precedences ();
     gram=g start_symbol [| |];
     rules_for_macro=Hashtbl.create 100}
 ;;
@@ -24,7 +24,7 @@ let lo s = Literal (Op s);;
 
 let show_macro_manager mmngr :string =
     "========= Macros =========\n"
-    ^ Util.join_da "\n" (DA.map str_of_macro mmngr.macros)
+    ^ str_of_precedences mmngr.prcdn
     ^ "\n========== Grammar ==========\n"
     ^ str_of_grammar mmngr.gram
     ^ "\n========== Macro rule indices ==========\n"
@@ -35,12 +35,16 @@ let show_macro_manager mmngr :string =
 
 ;;
 
-let add_macro mmngr macro :unit =
-    DA.add mmngr.macros macro
+let add_macro_between mmngr =
+    Macro.add_macro_between mmngr.prcdn
 ;;
 
-let get_macro mmngr i :'m macro =
-    DA.get mmngr.macros i
+let add_macro_equals mmngr =
+    Macro.add_macro_equals mmngr.prcdn
+;;
+
+let get_macro mmngr =
+    Macro.get_macro mmngr.prcdn
 ;;
 
 let is_macro mmngr i :bool =
@@ -70,73 +74,78 @@ let macro_to_op_fix mcr :(expr symbol) array =
         Array.map f sub
 ;;
 
-let add_macro_rule mmngr i mcr :unit =
+let add_pgroup_rules mmngr p :unit =
     let g = mmngr.gram in
-    let op_fix = macro_to_op_fix mcr in
-    let str_i = string_of_int i in
-    let p_hat = "P" ^ str_i in
-    let p_up = "U" ^ str_i in
+    let str_p = string_of_int p in
+    let p_hat = "P" ^ str_p in
+    let p_up = "U" ^ str_p in
     let p_up_arr = [| n p_up |] in
+    let p_up_added = ref false in
     let add_rule_g lhs rhs for_macro :unit =
         add_rule g (r lhs rhs);
         if for_macro then
             let rule_idx = num_rules g - 1 in
             Hashtbl.add mmngr.rules_for_macro rule_idx true
     in
-    let add_rule_p_hat sub :unit =
-        add_rule_g p_hat [| n sub |] false
-    in
-    let p_up_added = ref false in
     let add_rule_p_up () :unit =
         if not !p_up_added then
             add_rule_g p_up [| t "e" (fun x -> true) |] false;
             List.iter
                 (fun j ->
                     add_rule_g p_up [| n ("P" ^ string_of_int j) |] false)
-                (Core.Std.List.range 0 i);
+                (Core.Std.List.range 0 p);
             p_up_added := true
     in
-    add_rule_g start_symbol [| n p_hat |] false;
-    match mcr.fix with
-    | Closed -> (let p_clsd = "C" ^ str_i in
-            add_rule_p_hat p_clsd;
-            add_rule_g p_clsd op_fix true)
-    | Infix Non -> (let p_non = "N" ^ str_i in
-            add_rule_p_hat p_non;
-            let rhs = Array.concat [ p_up_arr; op_fix; p_up_arr ] in
-            add_rule_g p_non rhs true);
-            add_rule_p_up ()
-    | Prefix | Infix Right -> (let p_right = "R" ^ str_i in
-            let p_right_arr = [| n p_right |] in
-            let arr = match mcr.fix with
-                | Prefix -> op_fix
-                | Infix Right -> Array.append p_up_arr op_fix
-                | _ -> raise MacroErr
-            in
-            add_rule_p_hat p_right;
-            add_rule_g p_right (Array.append arr p_right_arr) true;
-            add_rule_g p_right (Array.append arr p_up_arr)) true;
-            add_rule_p_up ()
-    | Postfix | Infix Left -> (let p_left = "L" ^ str_i in
-            let p_left_arr = [| n p_left |] in
-            let arr = match mcr.fix with
-                | Prefix -> op_fix
-                | Infix Left -> Array.append op_fix p_up_arr
-                | _ -> raise MacroErr
-            in
-            add_rule_p_hat p_left;
-            add_rule_g p_left (Array.append p_left_arr arr) true;
-            add_rule_g p_left (Array.append p_up_arr arr)) true;
-            add_rule_p_up ()
+    let add_rule_p_hat sub :unit =
+        add_rule_g p_hat [| n sub |] false
+    in
+    let add_macro_rule mcr :unit =
+        let op_fix = macro_to_op_fix mcr in
+        let str_i = str_of_macro_id mcr.id in
+        add_rule_g start_symbol [| n p_hat |] false;
+        match mcr.fix with
+        | Closed -> (let p_clsd = "C" ^ str_i in
+                add_rule_p_hat p_clsd;
+                add_rule_g p_clsd op_fix true)
+        | Infix Non -> (let p_non = "N" ^ str_i in
+                add_rule_p_hat p_non;
+                let rhs = Array.concat [ p_up_arr; op_fix; p_up_arr ] in
+                add_rule_g p_non rhs true;
+                add_rule_p_up ())
+        | Prefix | Infix Right -> (let p_right = "R" ^ str_i in
+                let p_right_arr = [| n p_right |] in
+                let arr = match mcr.fix with
+                    | Prefix -> op_fix
+                    | Infix Right -> Array.append p_up_arr op_fix
+                    | _ -> raise MacroErr
+                in
+                add_rule_p_hat p_right;
+                add_rule_g p_right (Array.append arr p_right_arr) true;
+                add_rule_g p_right (Array.append arr p_up_arr) true;
+                add_rule_p_up ())
+        | Postfix | Infix Left -> (let p_left = "L" ^ str_i in
+                let p_left_arr = [| n p_left |] in
+                let arr = match mcr.fix with
+                    | Prefix -> op_fix
+                    | Infix Left -> Array.append op_fix p_up_arr
+                    | _ -> raise MacroErr
+                in
+                add_rule_p_hat p_left;
+                add_rule_g p_left (Array.append p_left_arr arr) true;
+                add_rule_g p_left (Array.append p_up_arr arr) true;
+                add_rule_p_up ())
+    in
+    DA.iter add_macro_rule (Macro.get_macros_in_pgroup mmngr.prcdn p)
 ;;
 
 let build_grammar mmngr :unit =
-    let f i mcr :unit =
-        add_macro_rule mmngr i mcr;
-        ()
+    let f i :unit =
+        (*add_pgroup_rules mmngr i*)
+        Printf.printf "dfs: %d\n" i
     in
     (*add_rule mmngr.gram (r start_symbol [| t (fun x -> true) |]);*)
-    DA.iteri f mmngr.macros
+    Macro.iter_pgroup f mmngr.prcdn;
+    ()
 ;;
 
 let rec parse_tree_to_expr (tree :'a parse_tree) :expr =
@@ -144,6 +153,19 @@ let rec parse_tree_to_expr (tree :'a parse_tree) :expr =
     | Leaf lf -> lf
     | Tree (i, arr) ->
             ExprList (Array.to_list (Array.map parse_tree_to_expr arr))
+;;
+
+let rec simplify_parse_tree mmngr ptree :'a parse_tree =
+    let f = simplify_parse_tree mmngr in
+    match ptree with
+    | (Leaf _) as lf -> lf
+    | Tree (i, arr) ->
+            if is_macro mmngr i then
+                Tree (i, (Array.map f arr))
+            else if Array.length arr <> 1 then
+                raise MacroErr
+            else
+                f (Array.get arr 0)
 ;;
 
 let parse_pattern mmngr exp :'a parse_tree =
@@ -194,19 +216,6 @@ let expand_macro (mcr :'m macro) (exp :expr) :expr =
     substitute_vars vars mcr.body
 ;;
 
-let rec simplify_parse_tree mmngr ptree :'a parse_tree =
-    let f = simplify_parse_tree mmngr in
-    match ptree with
-    | (Leaf _) as lf -> lf
-    | Tree (i, arr) ->
-            if is_macro mmngr i then
-                Tree (i, (Array.map f arr))
-            else if Array.length arr <> 1 then
-                raise MacroErr
-            else
-                f (Array.get arr 0)
-;;
-
 let rec expand_non_macro mmngr i arr :expr =
     if Array.length arr <> 1 then
         raise MacroErr
@@ -230,3 +239,4 @@ let expand mmngr exp =
     let tree = parse_pattern mmngr exp in
     expand_parse_tree mmngr tree
 ;;
+

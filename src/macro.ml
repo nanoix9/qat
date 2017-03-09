@@ -120,6 +120,9 @@ module G = struct
 end
 ;;
 
+module Dfs = Graph.Traverse.Dfs(G)
+;;
+
 type 'm macro_with_group = {macro:'m macro; group:int} ;;
 type precedence_group = {vert:G.V.t; macros:int DA.t};;
 type 'm precedences = {
@@ -150,7 +153,7 @@ let str_of_dag strs_of_vlabel g :string =
     in
     let rec f v (x, y) =
         if HT.mem visited v then raise MacroErr;
-        (*Printf.printf "visiting: %d\n" v;*)
+        Printf.printf "visiting: %d, succ: %s\n" v (S.concat ~sep:"," (List.map string_of_int (G.succ g v)));
         HT.add visited v true;
         Txtplot.draw_point plt.canvas x y '*';
         let _, h = show_vert v in
@@ -215,12 +218,34 @@ let str_of_precedences {dict;macros;groups;graph} :string =
         string_of_int igrp ::
             (List.mapi f2 (DA.to_list (DA.get groups igrp).macros))
     in
-    "=========== List of Precedences and Macros ===========\n"
+    "=========== Macro names to index mapping ===========\n"
+        ^ (HT.fold (fun k v acc -> acc ^ "\n" ^
+                str_of_macro_id k ^ ": " ^ string_of_int v) dict "")
+        ^ "\n=========== List of Precedences and Macros ===========\n"
         ^ Util.join_da "\n" (DA.mapi h groups)
         ^ "\n=========== Precedence Graph of Macros ===========\n"
         ^ str_of_dag strs_of_vert graph
 ;;
 
+let get_macro prcdn i :'m macro=
+    (DA.get prcdn.macros i).macro
+;;
+
+let get_macros_in_pgroup
+        (prcdn :'m precedences)
+        (igrp :int)
+        :('m macro) DA.t =
+    let grp :precedence_group = DA.get prcdn.groups igrp in
+    DA.map (fun i -> (DA.get prcdn.macros i).macro) grp.macros
+;;
+
+let get_pgroup_index_for_macro prcdn mcr_id :int =
+    let {dict;macros;groups;graph} = prcdn in
+    let imcr = HT.find prcdn.dict mcr_id in
+    (DA.get macros imcr).group
+;;
+
+(* TODO: check to make sure `high` is tighter than `low` if both set *)
 let add_precedence_group {dict;macros;groups;graph}
         (high :int option)
         (low :int option)
@@ -249,36 +274,61 @@ let add_precedence_group {dict;macros;groups;graph}
     i, grp
 ;;
 
+let add_macro_to_pgroup prcdn mcr igrp :unit =
+    let {dict;macros;groups;graph} = prcdn in
+    let grp = DA.get groups igrp in
+    let i = DA.length macros in
+    DA.add macros {macro=mcr; group=igrp};
+    DA.add grp.macros i;
+    HT.add dict mcr.id i;
+;;
 
-let add_macro_between prcdn
+let add_macro_between_helper prcdn
         (mcr :macro_elem macro)
-        (high :int option)
-        (low :int option)
+        (high_p :int option)
+        (low_p :int option)
         :unit =
     let {dict;macros;groups;graph} = prcdn in
     if HT.mem dict mcr.id then raise MacroErr
     else begin
-        let igrp, grp = add_precedence_group prcdn high low in
-        let i = DA.length macros in
-        DA.add macros {macro=mcr; group=igrp};
-        DA.add grp.macros i;
-        HT.add dict mcr.id i;
+        let igrp, grp = add_precedence_group prcdn high_p low_p in
+        add_macro_to_pgroup prcdn mcr igrp
     end
 ;;
 
-let add_macro prcdn mcr
+let add_macro_equals prcdn
+        (mcr :macro_elem macro)
+        (base :macro_name list)
+        :unit =
+    let {dict;macros;groups;graph} = prcdn in
+    if HT.mem dict mcr.id then raise MacroErr
+    else begin
+        let igrp = get_pgroup_index_for_macro prcdn base in
+        add_macro_to_pgroup prcdn mcr igrp
+    end
+;;
+
+let add_macro_between prcdn mcr
         (high :(macro_name list) option)
         (low :(macro_name list) option)
         :unit =
-    let high_idx = match high with
+        (*Printf.printf "%s\n" (str_of_precedences prcdn);*)
+    let p_high = match high with
         | None -> Some 0
-        | Some i -> Some (HT.find prcdn.dict i)
+        | Some i -> Some (get_pgroup_index_for_macro prcdn i)
     in
-    let low_idx = match low with
+    let p_low = match low with
         | None -> None
-        | Some i -> Some (HT.find prcdn.dict i)
+        | Some i -> Some (get_pgroup_index_for_macro prcdn i)
     in
-    add_macro_between prcdn mcr high_idx low_idx
+    (*let d x = match x with None -> -1 | Some i -> i in*)
+    (*Printf.printf "add between: %d %d\n" (d p_high) (d p_low);*)
+    add_macro_between_helper prcdn mcr p_high p_low
+;;
+
+let iter_pgroup (f :int -> unit) (prcdn :'m precedences) :unit =
+    let g = prcdn.graph in
+    Dfs.prefix_component f g (get_start_node g)
 ;;
 
 let make_precedences () = let p = {
@@ -287,7 +337,7 @@ let make_precedences () = let p = {
         groups = DA.make 10;
         graph = G.create ~size:100 () }
     in
-    add_macro_between p (new_macro Closed [Variable "_"] []) None None;
+    add_macro_between_helper p (new_macro Closed [Variable "_"] []) None None;
     p
 ;;
 
