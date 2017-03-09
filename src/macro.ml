@@ -259,24 +259,35 @@ let get_higher_pgroups prcdn p :int list =
     add_pred (DA.get groups p).vert
 ;;
 
-let get_relation prcdn a b :int option =
-    Some 1
+let get_pgroup_vert prcdn i =
+    let {vert;_} = DA.get prcdn.groups i in vert
 ;;
 
-(* TODO: check to make sure `high` is tighter than `low` if both set *)
+let check_higher_than prcdn i j :bool =
+    let vi = get_pgroup_vert prcdn i in
+    let vj = get_pgroup_vert prcdn j in
+    let rec has_path vi vj =
+        if vi = vj then true
+        else has_any_path (G.succ prcdn.graph vi) vj
+    and has_any_path vs vj =
+        match vs with
+        | [] -> false
+        | vi::vis -> has_path vi vj || has_any_path vis vj
+    in
+    has_path vi vj
+;;
+
 let add_precedence_group prcdn
         (high :int option)
         (low :int option)
         :int * precedence_group =
     let {dict;macros;groups;graph} = prcdn in
+    (* make sure `high` is higher than `low` if both set *)
     (match high, low with
-    | Some h, Some l -> (match get_relation prcdn high low with
-            | Some r when r > 0 -> ()
-            | _ -> raise MacroErr)
+    | Some h, Some l ->
+            if not (check_higher_than prcdn h l) then
+            raise MacroErr
     | _ -> ());
-    let get_vert i =
-        let {vert;_} = DA.get groups i in vert
-    in
     let i = DA.length groups in
     let v = G.V.create i in
     let grp = {vert=v; macros=DA.create ()} in
@@ -284,12 +295,12 @@ let add_precedence_group prcdn
     G.add_vertex graph v;
     let pred = match high with
         | None -> if DA.length groups <> 1 then raise MacroErr; None
-        | Some idx -> let p = get_vert idx in
+        | Some idx -> let p = get_pgroup_vert prcdn idx in
                 G.add_edge graph p v; Some p
     in
     let succ = match low with
         | None -> None
-        | Some idx -> let s = get_vert idx in
+        | Some idx -> let s = get_pgroup_vert prcdn idx in
                 G.add_edge graph v s; Some s
     in
     (match pred, succ with
