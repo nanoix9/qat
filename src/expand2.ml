@@ -78,12 +78,16 @@ let expr_terminal_arr = [| t "e" (fun x -> true) |];;
 
 let add_pgroup_rules mmngr p :unit =
     let g = mmngr.gram in
+    let get_p_sym prefix = prefix ^ string_of_int p in
     let get_p_hat p = "P" ^ string_of_int p in
-    let get_p_up p = "U" ^ string_of_int p in
     let p_hat = get_p_hat p in
-    let p_up = get_p_up p in
-    let p_up_arr = [| n p_up |] in
-    let p_up_added = ref false in
+    let p_up    = get_p_sym "U" in
+    let p_right = get_p_sym "R" in
+    let p_left  = get_p_sym "L" in
+    let p_up_arr    = [| n p_up |]    in
+    let p_right_arr = [| n p_right |] in
+    let p_left_arr  = [| n p_left |]  in
+    let p_sym_added = Hashtbl.create 5 in
     let add_rule_g lhs rhs for_macro :unit =
         add_rule g (r lhs rhs);
         if for_macro then
@@ -91,34 +95,33 @@ let add_pgroup_rules mmngr p :unit =
             Hashtbl.add mmngr.rules_for_macro rule_idx true
     in
     let add_rule_p_up () :unit =
-        Printf.printf "p up added: %d %s\n" p (string_of_bool !p_up_added);
-        if not !p_up_added then begin
+        let p_up_added = (Hashtbl.mem p_sym_added p_up) in
+        Printf.printf "p up added: %d %s\n" p (string_of_bool p_up_added);
+        if not (Hashtbl.mem p_sym_added p_up) then begin
             List.iter
                 (function
                     | 0 -> add_rule_g p_up expr_terminal_arr false
                     | j -> add_rule_g p_up [| n (get_p_hat j) |] false)
                 (get_higher_pgroups mmngr.prcdn p);
-            p_up_added := true
+            Hashtbl.add p_sym_added p_up true
         end
     in
-    let add_rule_p_hat sub :unit =
-        add_rule_g p_hat [| n sub |] false
+    let add_rule_p_hat sym :unit =
+        if not (Hashtbl.mem p_sym_added sym) then begin
+            add_rule_g p_hat [| n sym |] false;
+            Hashtbl.add p_sym_added sym true
+        end
     in
     let add_macro_rule mcr :unit =
         let op_fix = macro_to_op_fix mcr in
-        let str_i = string_of_int (get_macro_index mmngr.prcdn mcr.id) in
-        add_rule_g start_symbol [| n p_hat |] false;
+        (*let str_i = string_of_int (get_macro_index mmngr.prcdn mcr.id) in*)
         match mcr.fix with
-        | Closed -> (let p_clsd = "C" ^ str_i in
-                add_rule_p_hat p_clsd;
-                add_rule_g p_clsd op_fix true)
-        | Infix Non -> (let p_non = "N" ^ str_i in
-                add_rule_p_hat p_non;
-                let rhs = Array.concat [ p_up_arr; op_fix; p_up_arr ] in
-                add_rule_g p_non rhs true;
+        | Closed -> add_rule_g p_hat op_fix true
+        | Infix Non ->
+                (let rhs = Array.concat [ p_up_arr; op_fix; p_up_arr ] in
+                add_rule_g p_hat rhs true;
                 add_rule_p_up ())
-        | Prefix | Infix Right -> (let p_right = "R" ^ str_i in
-                let p_right_arr = [| n p_right |] in
+        | Prefix | Infix Right -> (
                 let arr = match mcr.fix with
                     | Prefix -> op_fix
                     | Infix Right -> Array.append p_up_arr op_fix
@@ -128,8 +131,7 @@ let add_pgroup_rules mmngr p :unit =
                 add_rule_g p_right (Array.append arr p_right_arr) true;
                 add_rule_g p_right (Array.append arr p_up_arr) true;
                 add_rule_p_up ())
-        | Postfix | Infix Left -> (let p_left = "L" ^ str_i in
-                let p_left_arr = [| n p_left |] in
+        | Postfix | Infix Left -> (
                 let arr = match mcr.fix with
                     | Prefix -> op_fix
                     | Infix Left -> Array.append op_fix p_up_arr
@@ -140,6 +142,7 @@ let add_pgroup_rules mmngr p :unit =
                 add_rule_g p_left (Array.append p_up_arr arr) true;
                 add_rule_p_up ())
     in
+    add_rule_g start_symbol [| n p_hat |] false;
     DA.iter add_macro_rule (get_macros_in_pgroup mmngr.prcdn p)
 ;;
 

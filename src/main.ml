@@ -91,7 +91,7 @@ let mmngr =
     add_macro_between m m1 (Some m3.id) None;
     add_macro_equals m m2 m1.id;
     (*add_macro_between m m5 None (Some m3.id);*)
-    add_macro_between m m4 (Some m3.id) None;
+    (*add_macro_between m m4 (Some m3.id) None;*)
     (*add_macro_between m m4 (Some m1.id) (Some m3.id);*)
     build_grammar m;
     m
@@ -130,7 +130,7 @@ let foobar () =
 
 let macro_main s =
     show_grammar ();
-    (*test_match ()*)
+    test_match ()
     (*foobar ()*)
 ;;
 
