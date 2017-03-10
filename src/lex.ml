@@ -57,19 +57,22 @@ let read_next stream :token =
         else
             raise LexErr
     in (
-        Printf.printf "buf %d~: %s\n" pos (String.sub buf pos (String.length buf - pos));
-        let new_pos, token = read_next_helper buf pos in
-        stream.pos <- new_pos; token;
-        )
+    (*Printf.printf "buf %d~: %s\n" pos (String.sub buf pos (String.length buf - pos));*)
+    let new_pos, token = read_next_helper buf pos in
+    stream.pos <- new_pos; token)
 
 let look_ahead stream :token =
     match stream.curr with
         | None -> let t = read_next stream in
                   (stream.curr <- Some t; t)
-        | Some t -> Printf.printf "look ahead: %s\n" (str_of_token t); t
+        | Some t ->
+                (*Printf.printf "look ahead: %s\n" (str_of_token t); *)
+                t
 
 let pop_token stream :token =
     match stream.curr with
         | None -> read_next stream
-        | Some t -> Printf.printf "pop: %s\n" (str_of_token t); stream.curr <- None; t
+        | Some t ->
+                (*Printf.printf "pop: %s\n" (str_of_token t); *)
+                stream.curr <- None; t
 

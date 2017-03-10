@@ -95,8 +95,8 @@ let add_pgroup_rules mmngr p :unit =
             Hashtbl.add mmngr.rules_for_macro rule_idx true
     in
     let add_rule_p_up () :unit =
-        let p_up_added = (Hashtbl.mem p_sym_added p_up) in
-        Printf.printf "p up added: %d %s\n" p (string_of_bool p_up_added);
+        (*let p_up_added = (Hashtbl.mem p_sym_added p_up) in*)
+        (*Printf.printf "p up added: %d %s\n" p (string_of_bool p_up_added);*)
         if not (Hashtbl.mem p_sym_added p_up) then begin
             List.iter
                 (function
@@ -133,7 +133,7 @@ let add_pgroup_rules mmngr p :unit =
                 add_rule_p_up ())
         | Postfix | Infix Left -> (
                 let arr = match mcr.fix with
-                    | Prefix -> op_fix
+                    | Postfix -> op_fix
                     | Infix Left -> Array.append op_fix p_up_arr
                     | _ -> raise MacroErr
                 in
@@ -148,7 +148,7 @@ let add_pgroup_rules mmngr p :unit =
 
 let build_grammar mmngr :unit =
     let f i :unit =
-        Printf.printf "dfs: %d\n" i;
+        (*Printf.printf "dfs: %d\n" i;*)
         match i with
         (*precedence 0 is a special one for expr terminal*)
         | 0 -> add_rule mmngr.gram (r start_symbol expr_terminal_arr)
@@ -179,15 +179,19 @@ let rec simplify_parse_tree mmngr ptree :'a parse_tree =
                 f (Array.get arr 0)
 ;;
 
-let parse_pattern mmngr exp :'a parse_tree =
+let parse_pattern_raw mmngr exp :'a parse_tree =
     let arr = match exp with
         | Atom a -> raise MacroErr
         | ExprList el -> Array.of_list el
     in
-    Util.println (str_of_items str_of_expr mmngr.gram (earley_match mmngr.gram arr));
+    (*Util.println (str_of_items str_of_expr mmngr.gram (earley_match mmngr.gram arr));*)
     match parse mmngr.gram arr with
     | None -> raise MacroErr
     | Some pt -> pt
+;;
+
+let parse_pattern mmngr exp :'a parse_tree =
+    simplify_parse_tree mmngr (parse_pattern_raw mmngr exp)
 ;;
 
 let rec extract_vars_list (patt_list :macro_expr list)

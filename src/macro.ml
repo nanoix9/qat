@@ -153,7 +153,7 @@ let str_of_dag strs_of_vlabel g :string =
     in
     let rec draw v (x, y) =
         if HT.mem visited v then raise MacroErr;
-        Printf.printf "visiting: %d, succ: %s\n" v (S.concat ~sep:"," (List.map string_of_int (G.succ g v)));
+        (*Printf.printf "visiting: %d, succ: %s\n" v (S.concat ~sep:"," (List.map string_of_int (G.succ g v)));*)
         HT.add visited v true;
         Txtplot.draw_point plt.canvas x y '*';
         let _, h = show_vert v in

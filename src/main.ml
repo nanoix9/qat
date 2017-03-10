@@ -81,7 +81,7 @@ let mmngr =
             [ls"add"; v"x"; v"y"] in
     let m2 = new_macro (Infix Left) [v"x"; lo"-"; v"y"]
             [ls"sub"; v"x"; v"y"] in
-    let m3 = new_macro (Infix Right) [v"x"; lo"*"; v"y"]
+    let m3 = new_macro (Infix Left) [v"x"; lo"*"; v"y"]
             [ls"mul"; v"x"; v"y"] in
     let m4 = new_macro (Infix Right) [v"x"; lo"/"; v"y"]
             [ls"slash"; v"x"; v"y"] in
@@ -90,7 +90,7 @@ let mmngr =
     add_macro_between m m3 None None;
     add_macro_between m m1 (Some m3.id) None;
     add_macro_equals m m2 m1.id;
-    (*add_macro_between m m5 None (Some m3.id);*)
+    add_macro_between m m5 None (Some m3.id);
     (*add_macro_between m m4 (Some m3.id) None;*)
     (*add_macro_between m m4 (Some m1.id) (Some m3.id);*)
     build_grammar m;
@@ -105,7 +105,8 @@ let i n :expr = Atom (Imm (Int n));;
 let show_grammar () = Util.println (show_macro_manager mmngr);;
 
 let test_match () =
-    let pt = parse_pattern mmngr (e [id "foo"; op "+"; id "bar"; op "-"; i 10]) in
+    let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in
+    let pt = parse_pattern_raw mmngr exp in
     Printf.printf "------- Parsed --------\n%s\n"
             (Earley.str_of_parse_tree str_of_expr pt);
     let spt = simplify_parse_tree mmngr pt in
