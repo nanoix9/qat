@@ -29,6 +29,17 @@ let assert_expand c setup expect exp =
         expect (parse_pattern m exp)
 ;;
 
+let assert_expand_error setup exp err =
+    assert_raises ~msg:err (Macro.MacroErr err)
+        (fun () ->
+            let m = create_macro_manager () in
+            setup m;
+            build_grammar m;
+            (*Util.println (show_macro_manager m);*)
+            parse_pattern m exp)
+;;
+
+
 let e lst :expr = ExprList lst;;
 let id s :expr = Atom (Id s);;
 let op s :expr = Atom (Op s);;
@@ -151,6 +162,37 @@ let suite =
                 (e [id"if"; id"x"; op">="; i 10; id"then";
                     id"if"; id"y"; id"then"; id"x"; op"+"; id"y"])
             );
+
+        "test_parse_no_relation" >:: (fun c ->
+            let f m =
+                add_macro_between m madd None None;
+                add_macro_between m msub None None;
+            in
+            assert_expand_error f
+                (e [id "x"; op "-"; id "y"; op "+"; id"z"])
+                "macro expanding error at token 4: [OP(+), ID(z)]"
+            );
+
+        "test_parse_add_between_no_relation" >:: (fun c ->
+            let f m =
+                add_macro_between m madd None None;
+                add_macro_between m msub None None;
+                add_macro_between m mmul (Some madd.id) (Some msub.id);
+            in
+            assert_expand_error f (e [])
+                "Add Precedence between group 1 and 2 but 1 is not higher than 2"
+            );
+
+        "test_parse_add_between_lower" >:: (fun c ->
+            let f m =
+                add_macro_between m mmul None None;
+                add_macro_between m madd (Some mmul.id) None;
+                add_macro_between m msub (Some madd.id) (Some mmul.id);
+            in
+            assert_expand_error f (e [])
+                "Add Precedence between group 2 and 1 but 2 is not higher than 1"
+            );
+
     ]
 ;;
 

@@ -59,10 +59,11 @@ let macro_to_op_fix mcr :(expr symbol) array =
                 (match a with
                 | Literal lit -> t (str_of_token lit) (fun x -> x = Atom lit)
                 | Variable v -> n start_symbol)
-        | ExprList _ -> raise MacroErr
+        | ExprList _ -> raise (MacroErr
+                "Not support list as macro pattern element")
     in
     match mcr.pattern with
-    | Atom a -> raise MacroErr
+    | Atom a -> raise (MacroErr "Macro pattern should be a list")
     | ExprList el -> let sub =
         (let arr = Array.of_list el in
         match mcr.fix with
@@ -125,7 +126,7 @@ let add_pgroup_rules mmngr p :unit =
                 let arr = match mcr.fix with
                     | Prefix -> op_fix
                     | Infix Right -> Array.append p_up_arr op_fix
-                    | _ -> raise MacroErr
+                    | _ -> assert false
                 in
                 add_rule_p_hat p_right;
                 add_rule_g p_right (Array.append arr p_right_arr) true;
@@ -135,7 +136,7 @@ let add_pgroup_rules mmngr p :unit =
                 let arr = match mcr.fix with
                     | Postfix -> op_fix
                     | Infix Left -> Array.append op_fix p_up_arr
-                    | _ -> raise MacroErr
+                    | _ -> assert false
                 in
                 add_rule_p_hat p_left;
                 add_rule_g p_left (Array.append p_left_arr arr) true;
@@ -174,20 +175,28 @@ let rec simplify_parse_tree mmngr ptree :'a parse_tree =
             if is_macro mmngr i then
                 Tree (i, (Array.map f arr))
             else if Array.length arr <> 1 then
-                raise MacroErr
+                raise (MacroErr
+                "Grammar rules not for a macro should have a length-one rhs")
             else
                 f (Array.get arr 0)
 ;;
 
+let str_of_expr_array arr =
+    "[" ^ (Util.joina ", " (Array.map str_of_expr arr)) ^ "]"
+;;
+
 let parse_pattern_raw mmngr exp :'a parse_tree =
     let arr = match exp with
-        | Atom a -> raise MacroErr
+        | Atom a -> raise (MacroErr "Input should be a list, not an atom")
         | ExprList el -> Array.of_list el
     in
     (*Util.println (str_of_items str_of_expr mmngr.gram (earley_match mmngr.gram arr));*)
-    match parse mmngr.gram arr with
-    | None -> raise MacroErr
-    | Some pt -> pt
+    try parse mmngr.gram arr
+    with EarleyErr i ->
+        let ierr = i - 1 in
+        raise (MacroErr ("macro expanding error at token " ^ string_of_int i
+            ^ ": "
+            ^ str_of_expr_array (Array.sub arr ierr (Array.length arr - ierr))))
 ;;
 
 let parse_pattern mmngr exp :'a parse_tree =
@@ -203,18 +212,18 @@ let rec extract_vars_list (patt_list :macro_expr list)
             let mmap_first = extract_vars p e in
             let mmap_rest = extract_vars_list ps es in
             Util.merge_str_map mmap_first mmap_rest
-    | _ -> raise MacroErr
+    | _ -> raise (MacroErr "")
 and extract_vars_atom (patt :macro_elem) (exp :expr) :expr StrMap.t =
     match patt, exp with
     | Literal lit, Atom a when lit = a -> StrMap.empty
     | Variable v, _ -> StrMap.add v exp StrMap.empty
-    | _ -> raise MacroErr
+    | _ -> raise (MacroErr "")
 and extract_vars (pattern :macro_expr) (exp :expr) :expr StrMap.t =
     match pattern, exp with
     | Atom a, e -> extract_vars_atom a e
     (*TODO: change to foldr *)
     | ExprList pl,  ExprList el -> extract_vars_list pl el
-    | _ -> raise MacroErr
+    | _ -> raise (MacroErr "")
 ;;
 
 let rec substitute_vars (vars :expr StrMap.t) (body :macro_expr) :expr =
@@ -233,7 +242,8 @@ let expand_macro (mcr :'m macro) (exp :expr) :expr =
 
 let rec expand_non_macro mmngr i arr :expr =
     if Array.length arr <> 1 then
-        raise MacroErr
+        raise (MacroErr
+            "Grammar rules not for a macro should have a length-one rhs")
     else
         expand_parse_tree mmngr (Array.get arr 0)
 and expand_rule mmngr i arr :expr =

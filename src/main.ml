@@ -45,7 +45,7 @@ let earley_foo s = Printf.printf "%s\n" (str_of_grammar gram)
 let earley_foo2 c =
     let input = input_string "1 + 1" in
     let items = earley_match gram input in
-    Printf.printf "input: %s\n" (Util.joina ~sep:" • " input);
+    Printf.printf "input: %s\n" (Util.joina " • " input);
     Printf.printf "%d\n" (DA.length items);
     Printf.printf "%s\n" (str_of_items (fun x -> x) gram items)
 ;;
@@ -54,14 +54,13 @@ let earley_foo3 c = Printf.printf "%s\n" (string_of_bool
         (recognize gram (input_string "1 + 1")))
 
 let earley_foo4 c = Printf.printf "%s\n" (
-    match parse gram (input_string "1 + 1") with
-    | None -> "ERROR"
-    | Some t -> str_of_parse_tree (fun x -> x) t)
+    let t = parse gram (input_string "1 + 1") in
+    str_of_parse_tree (fun x -> x) t)
 
 let earley_test_ss_defect c =
     let input = input_string "x x x" in
     let items = earley_match gram2 input in
-    Printf.printf "input: %s\n" (Util.joina ~sep:" • " input);
+    Printf.printf "input: %s\n" (Util.joina " • " input);
     Printf.printf "%d\n" (DA.length items);
     Printf.printf "%s\n" (str_of_items (fun x -> x) gram2 items)
 ;;
@@ -105,7 +104,8 @@ let i n :expr = Atom (Imm (Int n));;
 let show_grammar () = Util.println (show_macro_manager mmngr);;
 
 let test_match () =
-    let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in
+    (*let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in*)
+    let exp = e [id "foo"; op "+"; id "bar"; op "@"; i 10] in
     let pt = parse_pattern_raw mmngr exp in
     Printf.printf "------- Parsed --------\n%s\n"
             (Earley.str_of_parse_tree str_of_expr pt);

@@ -4,7 +4,7 @@ module S = Core.Std.String;;
 module DA = DynArray;;
 module HT = Hashtbl;;
 
-exception MacroErr;;
+exception MacroErr of string;;
 
 type associativity =
     | Left
@@ -48,10 +48,11 @@ let pattern_to_name pattern :macro_name list =
     let f e :macro_name =
         match e with
         | Atom a -> macro_elem_to_name a
-        | _ -> raise MacroErr
+        | _ -> raise (MacroErr
+                "Do not support compound expression in macro pattern")
     in
     match pattern with
-    | Atom _ -> raise MacroErr
+    | Atom _ -> raise (MacroErr "Macro pattern must be a list")
     | ExprList el -> List.map f el
 ;;
 
@@ -137,7 +138,8 @@ let get_start_node g :G.V.t =
         (fun v acc -> if G.pred g v = [] then v::acc else acc)
         g []
     in
-    if List.length nodes <> 1 then raise MacroErr
+    if List.length nodes <> 1 then raise (MacroErr
+            "Should be only 1 entry point in macro precedence hierarchy")
     else List.hd nodes
 ;;
 
@@ -152,7 +154,8 @@ let str_of_dag strs_of_vlabel g :string =
         1, (List.length lines + 1)
     in
     let rec draw v (x, y) =
-        if HT.mem visited v then raise MacroErr;
+        if HT.mem visited v then raise (MacroErr
+                "Cycle detected in macro precedence hierarchy");
         (*Printf.printf "visiting: %d, succ: %s\n" v (S.concat ~sep:"," (List.map string_of_int (G.succ g v)));*)
         HT.add visited v true;
         Txtplot.draw_point plt.canvas x y '*';
@@ -286,7 +289,9 @@ let add_precedence_group prcdn
     (match high, low with
     | Some h, Some l ->
             if not (check_higher_than prcdn h l) then
-            raise MacroErr
+            raise (MacroErr (Printf.sprintf
+                "Add Precedence between group %d and %d but %d is not higher than %d"
+                h l h l))
     | _ -> ());
     let i = DA.length groups in
     let v = G.V.create i in
@@ -294,7 +299,9 @@ let add_precedence_group prcdn
     DA.add groups grp;
     G.add_vertex graph v;
     let pred = match high with
-        | None -> if DA.length groups <> 1 then raise MacroErr; None
+        | None ->
+                assert (DA.length groups = 1);
+                None
         | Some idx -> let p = get_pgroup_vert prcdn idx in
                 G.add_edge graph p v; Some p
     in
@@ -324,7 +331,8 @@ let add_macro_between_helper prcdn
         (low_p :int option)
         :unit =
     let {dict;macros;groups;graph} = prcdn in
-    if HT.mem dict mcr.id then raise MacroErr
+    if HT.mem dict mcr.id then raise (MacroErr
+        ("Macro '" ^ str_of_macro_id mcr.id ^ "' already exists"))
     else begin
         let igrp, grp = add_precedence_group prcdn high_p low_p in
         add_macro_to_pgroup prcdn mcr igrp
@@ -336,7 +344,8 @@ let add_macro_equals prcdn
         (base :macro_name list)
         :unit =
     let {dict;macros;groups;graph} = prcdn in
-    if HT.mem dict mcr.id then raise MacroErr
+    if HT.mem dict mcr.id then raise (MacroErr
+        ("Macro '" ^ str_of_macro_id mcr.id ^ "' already exists"))
     else begin
         let igrp = get_pgroup_index_for_macro prcdn base in
         add_macro_to_pgroup prcdn mcr igrp

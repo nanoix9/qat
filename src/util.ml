@@ -1,13 +1,13 @@
 let println = Printf.printf "%s\n"
 ;;
 
-let rec join ?(sep=" ") x =
-    match x with
-    | []      -> ""
-    | [x]     -> x
-    | x::xs   -> x ^ sep ^ join ~sep:sep xs
+(*let rec join " " x =*)
+    (*match x with*)
+    (*| []      -> ""*)
+    (*| [x]     -> x*)
+    (*| x::xs   -> x ^ sep ^ join sep xs*)
 
-let rec joina ?(sep=" ") x =
+let rec joina sep x =
     String.concat sep (Array.to_list x)
 
 let join_da sep da =
@@ -21,7 +21,7 @@ let merge_str_map a b :'a StrMap.t =
 ;;
 
 let str_of_strmap str_of_value smap =
-    "{" ^ (join ~sep:", " (StrMap.fold (fun k v lst ->
+    "{" ^ (String.concat ", " (StrMap.fold (fun k v lst ->
             (k ^ ":" ^ (str_of_value v))::lst)
             smap [])) ^ "}"
 ;;

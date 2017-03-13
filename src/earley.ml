@@ -1,6 +1,8 @@
 module DA = DynArray;;
 module OHS = Basic.OrderedHashset;;
 
+exception EarleyErr of int;;
+
 type 'a symbol =
     | Terminal of string * ('a -> bool)
     | NonTerm of string
@@ -35,7 +37,7 @@ let str_of_symbol s :string =
 
 let str_of_rule r :string =
     str_of_symbol r.lhs ^ " -> " ^
-        Util.joina ~sep:" " (Array.map str_of_symbol r.rhs)
+        Util.joina " " (Array.map str_of_symbol r.rhs)
 ;;
 
 let str_of_grammar g :string =
@@ -78,7 +80,7 @@ let str_of_item str_of_token gram i item =
     string_of_int i ^ ". "
         ^ str_of_symbol lhs
         ^ " -> "
-        ^ Util.joina ~sep:" " (Array.concat [
+        ^ Util.joina " " (Array.concat [
             (Array.map2 str_of_symbol_with_parsed
                 already_matched item.parsed_symbols);
             [| "•" |];
@@ -203,7 +205,7 @@ let rec str_of_parse_tree str_of_leaf tree =
     match tree with
     | Leaf lf -> str_of_leaf lf
     | Tree (i, t) ->
-            "[" ^ (Util.joina ~sep:", "
+            "[" ^ (Util.joina ", "
                       (Array.map (str_of_parse_tree str_of_leaf) t))
                 ^ "]("
                 ^ string_of_int i
@@ -212,9 +214,6 @@ let rec str_of_parse_tree str_of_leaf tree =
 
 let rec get_parsed_item items item :'a parse_tree=
     let pss = item.parsed_symbols in
-    (*if Array.length pss == 1 then
-        get_parsed_symbol items (Array.get pss 0)
-    else*)
     Tree (item.rule, Array.map (get_parsed_symbol items) pss)
 and get_parsed_symbol items ps =
     match ps with
@@ -222,11 +221,11 @@ and get_parsed_symbol items ps =
     | PNonTerm (i, j) -> get_parsed_item items (get_item items i j)
 ;;
 
-let parse gram input :('a parse_tree) option =
+let parse gram input :'a parse_tree =
     let len = Array.length input in
     let items = earley_match gram input in
     match get_complete_matched gram items input with
-    | None -> None
-    | Some k -> Some (get_parsed_item items (get_item items len k))
+    | None -> raise (EarleyErr (DA.length items))
+    | Some k -> get_parsed_item items (get_item items len k)
 ;;
 
