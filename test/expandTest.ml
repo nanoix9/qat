@@ -1,57 +1,238 @@
 open OUnit2
 open Expand
+open Expr
+open Macro
+open Earley
 
-
-let assert_mmatch c expect pattern expr_ =
-    assert_equal ~ctxt:c ~printer:str_of_mmatch_result
-                 ~cmp:equal_mmatch_result
-                 expect (mmatch pattern expr_)
+let rec parse_tree_equals p q :bool =
+    match p, q with
+    | Leaf f, Leaf g when f = g -> true
+    | Tree (_, t), Tree (_, s) -> parse_tree_array_equals t s 0
+    | _ -> false
+and parse_tree_array_equals t s i :bool =
+    let tlen = Array.length t in
+    let slen = Array.length s in
+    if tlen <> slen then false
+    else if i = tlen then true
+    else parse_tree_equals (Array.get t i) (Array.get s i)
+        && parse_tree_array_equals t s (i+1)
 ;;
 
-let atom_id s = Expr.Atom (Expr.Id s);;
-let atom_op s = Expr.Atom (Expr.Op s);;
-let atom_int i = Expr.Atom (Expr.Imm (Expr.Int i))
-let expr_list lst = Expr.ExprList lst;;
-let atom_literal lit = Expr.Atom (Literal (Expr.Id lit));;
-let atom_var var = Expr.Atom (Variable var);;
+let assert_expand_parse c setup expect exp =
+    let m = create_macro_manager () in
+    setup m;
+    build_grammar m;
+    (*Util.println (show_macro_manager m);*)
+    assert_equal ~ctxt:c
+        ~cmp:parse_tree_equals
+        ~printer:(str_of_parse_tree str_of_expr)
+        expect (parse_pattern m exp)
+;;
+
+let assert_expand_parse_error setup exp err =
+    assert_raises ~msg:err (Macro.MacroErr err)
+        (fun () ->
+            let m = create_macro_manager () in
+            setup m;
+            build_grammar m;
+            (*Util.println (show_macro_manager m);*)
+            parse_pattern m exp)
+;;
+
+let assert_expand c setup expect exp =
+    let m = create_macro_manager () in
+    setup m;
+    build_grammar m;
+    (*Util.println (show_macro_manager m);*)
+    assert_equal ~ctxt:c
+        ~printer:str_of_expr
+        expect (expand m exp)
+;;
+
+
+let e lst :expr = ExprList lst;;
+let id s :expr = Atom (Id s);;
+let op s :expr = Atom (Op s);;
+let i n :expr = Atom (Imm (Int n));;
+
+let lf_id s = Leaf (id s);;
+let lf_op s = Leaf (op s);;
+let lf_i n = Leaf (i n);;
+let tr arr = Tree (0, arr);;
+
+let x = v"x"
+let y = v"y"
+let z = v"z"
+;;
+
+let madd = new_macro (Infix Left) [x; lo"+"; y] [ls"add"; x; y]
+let msub = new_macro (Infix Left) [x; lo"-"; y] [ls"sub"; x; y]
+let mmul = new_macro (Infix Left) [x; lo"*"; y] [ls"mul"; x; y]
+let mdiv = new_macro (Infix Right) [x; lo"/"; y] [ls"slash"; x; y]
+let mpow = new_macro (Infix Right) [x; lo"**"; y] [ls"pow"; x; y]
+let mnot = new_macro Prefix [lo"!"; x] [ls"not"; x]
+let mge = new_macro (Infix Non) [x; lo">="; y] [ls"ge"; x; y]
+let mw = new_macro Closed [ls"while"; x; ls"do"; y; ls"done"]
+                    [ls"while_loop"; x; y]
+let mif = new_macro Prefix [ls"if"; x; ls"then"; y]
+                    [ls"if_then"; x; y]
+let mif2 = new_macro Prefix [ls"if"; x; ls"then"; y; ls"else"; z]
+                    [ls"if_else"; x; y; z]
+let mter = new_macro (Infix Right) [x; lo"?"; y; lo":"; z]
+                    [ls"if_else"; x; y; z]
+let minc = new_macro Postfix [x; lo"++"] [ls"inc"; x]
+let mdec = new_macro Postfix [x; lo"--"] [ls"dec"; x]
+;;
+    (*add_macro_between m m4 (Some m3.id) None;*)
+    (*add_macro_between m m4 (Some m1.id) (Some m3.id);*)
+
+let add_macro_between = Expand.add_macro_between;;
+let add_macro_equals = Expand.add_macro_equals;;
 
 let suite =
     "expand" >::: [
-        "test_match_atom" >:: (fun c -> assert_mmatch c
-                (true, None)
-                (atom_literal "foo")
-                (atom_id "foo")
+        "test_parse_left" >:: (fun c ->
+            let f m =
+                add_macro_between m mmul None None;
+                add_macro_between m madd (Some mmul.id) None;
+                add_macro_equals m msub madd.id;
+                (*add_macro_between m m5 None (Some m3.id);*)
+            in
+            assert_expand_parse c f
+                (tr [| tr [| lf_id "foo"; lf_op "+"; lf_id"bar" |];
+                    lf_op"-"; lf_i 10 |])
+                (e [id "foo"; op "+"; id "bar"; op "-"; i 10])
             );
 
-        "test_match_var" >:: (fun c -> let e = atom_id "bar" in
-                assert_mmatch c
-                    (true, Some (StrMap.add "foo" e StrMap.empty))
-                    (atom_var "foo") e
+        "test_parse_right" >:: (fun c ->
+            let f m =
+                add_macro_between m mmul None None;
+                add_macro_between m madd (Some mmul.id) None;
+                add_macro_equals m msub madd.id;
+                add_macro_between m mpow None (Some mmul.id);
+            in
+            assert_expand_parse c f
+                (tr [| lf_id"a"; lf_op"+";
+                    tr [| lf_id"b"; lf_op"*";
+                        tr [| lf_id"c"; lf_op"**";
+                            tr [| lf_id"d"; lf_op"**"; lf_id"e" |] |] |] |] )
+                (e [id "a"; op "+"; id "b"; op "*"; id "c";
+                    op"**"; id"d"; op"**"; id"e";])
             );
 
-        "test_match_list" >:: (fun c ->
-                let cond_expr = expr_list [atom_id "x"; atom_op "==";
-                        atom_int 0] in
-                let blk_true = atom_id "foo" in
-                let blk_false = atom_id "bar" in
-                assert_mmatch c
-                    (true, Some (StrMap.empty |> StrMap.add "cond" cond_expr
-                        |> StrMap.add "blk_true" blk_true
-                        |> StrMap.add "blk_false" blk_false))
-                    (expr_list [atom_literal "if"; atom_var "cond";
-                        atom_var "blk_true"; atom_literal "else";
-                        atom_var "blk_false"])
-                    (expr_list [atom_id "if"; cond_expr; blk_true;
-                        atom_id "else"; blk_false])
+        "test_parse_prefix" >:: (fun c ->
+            let f m =
+                add_macro_between m mge None None;
+                add_macro_between m mnot (Some mge.id) None;
+            in
+            assert_expand_parse c f
+                (tr [| lf_op"!";
+                    tr [| lf_op"!";
+                        tr [| lf_id"x"; lf_op">="; lf_id"y" |] |] |])
+                (e [op"!"; op"!"; id"x"; op">="; id"y"])
             );
 
-        "test_partial_match" >:: (fun c ->
-                let e = atom_id "foo" in
-                assert_mmatch c
-                    (true, Some (StrMap.add "foo" e StrMap.empty))
-                    (expr_list [atom_var "foo"])
-                    (expr_list [e; atom_id "bar"])
+        "test_parse_postfix" >:: (fun c ->
+            let f m =
+                add_macro_between m minc None None;
+                add_macro_equals m mdec minc.id;
+            in
+            assert_expand_parse c f
+                (tr [| tr [| lf_id"x"; lf_op"++"; |]; lf_op"--" |])
+                (e [id"x"; op"++"; op"--";])
             );
+
+        "test_parse_closed" >:: (fun c ->
+            let f m =
+                add_macro_between m mge None None;
+                add_macro_between m mdec None None;
+                add_macro_between m mw None None;
+                (*add_macro_between m m5 None (Some m3.id);*)
+            in
+            assert_expand_parse c f
+                (tr [| lf_id"while";
+                    tr [| lf_id "x"; lf_op ">="; lf_i 0 |];
+                    lf_id"do";
+                    tr [| lf_id"x"; lf_op"--" |];
+                    lf_id "done" |])
+                (e [id"while"; id "x"; op ">="; i 0; id"do";
+                    id"x"; op"--"; id"done"])
+            );
+
+        "test_parse_if" >:: (fun c ->
+            let f m =
+                add_macro_between m mif None None;
+                add_macro_between m mge (Some mif.id) None;
+                add_macro_between m madd None (Some mif.id);
+            in
+            assert_expand_parse c f
+                (tr [| lf_id"if";
+                    tr [| lf_id"x"; lf_op">="; lf_i 10 |];
+                    lf_id"then";
+                    tr [| lf_id"if"; lf_id"y"; lf_id"then";
+                        tr [| lf_id"x"; lf_op"+"; lf_id"y" |] |] |])
+                (e [id"if"; id"x"; op">="; i 10; id"then";
+                    id"if"; id"y"; id"then"; id"x"; op"+"; id"y"])
+            );
+
+        "test_parse_no_relation" >:: (fun c ->
+            let f m =
+                add_macro_between m madd None None;
+                add_macro_between m msub None None;
+            in
+            assert_expand_parse_error f
+                (e [id "x"; op "-"; id "y"; op "+"; id"z"])
+                "macro expanding error at token 4: [OP(+), ID(z)]"
+            );
+
+        "test_parse_add_between_no_relation" >:: (fun c ->
+            let f m =
+                add_macro_between m madd None None;
+                add_macro_between m msub None None;
+                add_macro_between m mmul (Some madd.id) (Some msub.id);
+            in
+            assert_expand_parse_error f (e [])
+                "Add Precedence between group 1 and 2 but 1 is not higher than 2"
+            );
+
+        "test_parse_add_between_lower" >:: (fun c ->
+            let f m =
+                add_macro_between m mmul None None;
+                add_macro_between m madd (Some mmul.id) None;
+                add_macro_between m msub (Some madd.id) (Some mmul.id);
+            in
+            assert_expand_parse_error f (e [])
+                "Add Precedence between group 2 and 1 but 2 is not higher than 1"
+            );
+
+        "test_expand_right" >:: (fun c ->
+            let f m =
+                add_macro_between m mw None None;
+                add_macro_equals m mif mw.id;
+                add_macro_equals m mif2 mw.id;
+                add_macro_between m minc (Some mw.id) None;
+                add_macro_equals m mdec minc.id;
+                add_macro_between m mpow (Some minc.id) None;
+                add_macro_between m mmul (Some mpow.id) None;
+                add_macro_between m madd (Some mmul.id) None;
+                add_macro_equals m msub madd.id;
+                add_macro_between m mge (Some msub.id) None;
+            in
+            assert_expand c f
+                (e [])
+                (e [id"while"; id "x"; op ">="; i 0; id"do";
+                        id"if"; id"foo"; op">="; i 10; id"then";
+                            id"foo"; op"*"; op"x";
+                        id"else";
+                            e [id"x"; op"--"];
+                    id"done"])
+
+                (*(e [id "a"; op "+"; id "b"; op "*"; id "c";*)
+                    (*op"**"; id"d"; op"**"; id"e";])*)
+            );
+
 
     ]
+;;
+
 

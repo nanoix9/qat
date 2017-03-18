@@ -3,7 +3,7 @@ open Expr
 open Parse
 open Earley
 open Macro
-open Expand2
+open Expand
 
 (*=========== test parse ============*)
 let parse = Parse.parse;;
