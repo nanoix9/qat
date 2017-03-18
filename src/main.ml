@@ -4,6 +4,7 @@ open Parse
 open Earley
 open Macro
 open Expand
+open Evaluate
 
 (*=========== test parse ============*)
 let parse = Parse.parse;;
@@ -187,6 +188,18 @@ let print_graph () =
     (*printf "%s\n" (get_content plt.canvas)*)
 ;;
 
+(*================ Evaluate =================*)
+let test_eval () =
+    (*let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in*)
+    let exp = e [id "foo"; i 10] in
+    let res = evaluate exp in
+    ()
+;;
+
+let eval_main () =
+    test_eval ()
+;;
+
 (*=========== main ===========*)
 let main () =
     ();
@@ -194,7 +207,9 @@ let main () =
 
     (*earley_string_main ();*)
 
-    macro_main ()
+    (*macro_main ()*)
+
+    eval_main ()
 
     (*print_graph ()*)
 ;;
