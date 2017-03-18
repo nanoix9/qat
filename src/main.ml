@@ -104,14 +104,29 @@ let i n :expr = Atom (Imm (Int n));;
 let show_grammar () = Util.println (show_macro_manager mmngr);;
 
 let test_match () =
-    (*let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in*)
-    let exp = e [id "foo"; op "+"; id "bar"; op "@"; i 10] in
+    let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in
+    (*let exp = e [id "foo"; op "+"; id "bar"; op "@"; i 10] in*)
     let pt = parse_pattern_raw mmngr exp in
     Printf.printf "------- Parsed --------\n%s\n"
             (Earley.str_of_parse_tree str_of_expr pt);
     let spt = simplify_parse_tree mmngr pt in
     Printf.printf "------- Simplified --------\n%s\n"
             (Earley.str_of_parse_tree str_of_expr spt)
+;;
+
+let test_substitute () =
+    let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in
+    (*let exp = e [id "foo"; op "+"; id "bar"; op "@"; i 10] in*)
+    (*let pt = parse_pattern_raw mmngr exp in*)
+    (*Printf.printf "------- Parsed --------\n%s\n"*)
+            (*(Earley.str_of_parse_tree str_of_expr pt);*)
+    (*let spt = simplify_parse_tree mmngr pt in*)
+    let spt = parse_pattern mmngr exp in
+    Printf.printf "------- Matched --------\n%s\n"
+            (Earley.str_of_parse_tree str_of_expr spt);
+    let eexp = expand_parse_tree mmngr spt in
+    Printf.printf "------- Expanded --------\n%s\n"
+            (Expr.str_of_expr eexp)
 ;;
 
 let foobar () =
@@ -131,7 +146,8 @@ let foobar () =
 
 let macro_main s =
     show_grammar ();
-    test_match ()
+    (*test_match ()*)
+    test_substitute ()
     (*foobar ()*)
 ;;
 

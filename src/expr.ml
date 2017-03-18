@@ -36,8 +36,8 @@ let str_of_token = function
 
 let rec str_of_abs_expr str_of_a e = match e with
     | Atom t -> str_of_a t
-    | ExprList e -> "(" ^ String.concat " "
-            (List.map (str_of_abs_expr str_of_a) e) ^ ")" ;;
+    | ExprList e -> "[" ^ String.concat ", "
+            (List.map (str_of_abs_expr str_of_a) e) ^ "]" ;;
 
 let str_of_expr = str_of_abs_expr str_of_token ;;
 

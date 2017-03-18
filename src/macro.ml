@@ -234,6 +234,14 @@ let get_macro prcdn i :'m macro=
     (DA.get prcdn.macros i).macro
 ;;
 
+let get_macro_indices_in_pgroup
+        (prcdn :'m precedences)
+        (igrp :int)
+        :int DA.t =
+    let grp :precedence_group = DA.get prcdn.groups igrp in
+    grp.macros
+;;
+
 let get_macros_in_pgroup
         (prcdn :'m precedences)
         (igrp :int)

@@ -18,7 +18,7 @@ and parse_tree_array_equals t s i :bool =
         && parse_tree_array_equals t s (i+1)
 ;;
 
-let assert_expand c setup expect exp =
+let assert_expand_parse c setup expect exp =
     let m = create_macro_manager () in
     setup m;
     build_grammar m;
@@ -29,7 +29,7 @@ let assert_expand c setup expect exp =
         expect (parse_pattern m exp)
 ;;
 
-let assert_expand_error setup exp err =
+let assert_expand_parse_error setup exp err =
     assert_raises ~msg:err (Macro.MacroErr err)
         (fun () ->
             let m = create_macro_manager () in
@@ -37,6 +37,16 @@ let assert_expand_error setup exp err =
             build_grammar m;
             (*Util.println (show_macro_manager m);*)
             parse_pattern m exp)
+;;
+
+let assert_expand c setup expect exp =
+    let m = create_macro_manager () in
+    setup m;
+    build_grammar m;
+    (*Util.println (show_macro_manager m);*)
+    assert_equal ~ctxt:c
+        ~printer:str_of_expr
+        expect (expand m exp)
 ;;
 
 
@@ -66,6 +76,8 @@ let mw = new_macro Closed [ls"while"; x; ls"do"; y; ls"done"]
                     [ls"while_loop"; x; y]
 let mif = new_macro Prefix [ls"if"; x; ls"then"; y]
                     [ls"if_then"; x; y]
+let mif2 = new_macro Prefix [ls"if"; x; ls"then"; y; ls"else"; z]
+                    [ls"if_else"; x; y; z]
 let mter = new_macro (Infix Right) [x; lo"?"; y; lo":"; z]
                     [ls"if_else"; x; y; z]
 let minc = new_macro Postfix [x; lo"++"] [ls"inc"; x]
@@ -86,7 +98,7 @@ let suite =
                 add_macro_equals m msub madd.id;
                 (*add_macro_between m m5 None (Some m3.id);*)
             in
-            assert_expand c f
+            assert_expand_parse c f
                 (tr [| tr [| lf_id "foo"; lf_op "+"; lf_id"bar" |];
                     lf_op"-"; lf_i 10 |])
                 (e [id "foo"; op "+"; id "bar"; op "-"; i 10])
@@ -99,7 +111,7 @@ let suite =
                 add_macro_equals m msub madd.id;
                 add_macro_between m mpow None (Some mmul.id);
             in
-            assert_expand c f
+            assert_expand_parse c f
                 (tr [| lf_id"a"; lf_op"+";
                     tr [| lf_id"b"; lf_op"*";
                         tr [| lf_id"c"; lf_op"**";
@@ -113,7 +125,7 @@ let suite =
                 add_macro_between m mge None None;
                 add_macro_between m mnot (Some mge.id) None;
             in
-            assert_expand c f
+            assert_expand_parse c f
                 (tr [| lf_op"!";
                     tr [| lf_op"!";
                         tr [| lf_id"x"; lf_op">="; lf_id"y" |] |] |])
@@ -125,7 +137,7 @@ let suite =
                 add_macro_between m minc None None;
                 add_macro_equals m mdec minc.id;
             in
-            assert_expand c f
+            assert_expand_parse c f
                 (tr [| tr [| lf_id"x"; lf_op"++"; |]; lf_op"--" |])
                 (e [id"x"; op"++"; op"--";])
             );
@@ -137,7 +149,7 @@ let suite =
                 add_macro_between m mw None None;
                 (*add_macro_between m m5 None (Some m3.id);*)
             in
-            assert_expand c f
+            assert_expand_parse c f
                 (tr [| lf_id"while";
                     tr [| lf_id "x"; lf_op ">="; lf_i 0 |];
                     lf_id"do";
@@ -153,7 +165,7 @@ let suite =
                 add_macro_between m mge (Some mif.id) None;
                 add_macro_between m madd None (Some mif.id);
             in
-            assert_expand c f
+            assert_expand_parse c f
                 (tr [| lf_id"if";
                     tr [| lf_id"x"; lf_op">="; lf_i 10 |];
                     lf_id"then";
@@ -168,7 +180,7 @@ let suite =
                 add_macro_between m madd None None;
                 add_macro_between m msub None None;
             in
-            assert_expand_error f
+            assert_expand_parse_error f
                 (e [id "x"; op "-"; id "y"; op "+"; id"z"])
                 "macro expanding error at token 4: [OP(+), ID(z)]"
             );
@@ -179,7 +191,7 @@ let suite =
                 add_macro_between m msub None None;
                 add_macro_between m mmul (Some madd.id) (Some msub.id);
             in
-            assert_expand_error f (e [])
+            assert_expand_parse_error f (e [])
                 "Add Precedence between group 1 and 2 but 1 is not higher than 2"
             );
 
@@ -189,9 +201,36 @@ let suite =
                 add_macro_between m madd (Some mmul.id) None;
                 add_macro_between m msub (Some madd.id) (Some mmul.id);
             in
-            assert_expand_error f (e [])
+            assert_expand_parse_error f (e [])
                 "Add Precedence between group 2 and 1 but 2 is not higher than 1"
             );
+
+        "test_expand_right" >:: (fun c ->
+            let f m =
+                add_macro_between m mw None None;
+                add_macro_equals m mif mw.id;
+                add_macro_equals m mif2 mw.id;
+                add_macro_between m minc (Some mw.id) None;
+                add_macro_equals m mdec minc.id;
+                add_macro_between m mpow (Some minc.id) None;
+                add_macro_between m mmul (Some mpow.id) None;
+                add_macro_between m madd (Some mmul.id) None;
+                add_macro_equals m msub madd.id;
+                add_macro_between m mge (Some msub.id) None;
+            in
+            assert_expand c f
+                (e [])
+                (e [id"while"; id "x"; op ">="; i 0; id"do";
+                        id"if"; id"foo"; op">="; i 10; id"then";
+                            id"foo"; op"*"; op"x";
+                        id"else";
+                            e [id"x"; op"--"];
+                    id"done"])
+
+                (*(e [id "a"; op "+"; id "b"; op "*"; id "c";*)
+                    (*op"**"; id"d"; op"**"; id"e";])*)
+            );
+
 
     ]
 ;;

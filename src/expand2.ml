@@ -7,7 +7,7 @@ module StrMap = Util.StrMap;;
 type ('m, 't) macro_manager = {
     prcdn: 'm precedences; (* macro precedence hierarchy *)
     gram: 't grammar;
-    rules_for_macro: (int, bool) Hashtbl.t }
+    rules_for_macro: (int, int) Hashtbl.t }
 ;;
 
 let start_symbol = "E";;
@@ -31,7 +31,9 @@ let show_macro_manager mmngr :string =
     ^ let keys = List.sort
             (fun a b -> a - b)
             (Util.hashtbl_keys mmngr.rules_for_macro) in
-        String.concat ", " (List.map string_of_int keys)
+        let f k = string_of_int k ^ ":" ^ string_of_int
+            (Hashtbl.find mmngr.rules_for_macro k) in
+        String.concat ", " (List.map f keys)
 
 ;;
 
@@ -45,6 +47,10 @@ let add_macro_equals mmngr =
 
 let get_macro mmngr =
     Macro.get_macro mmngr.prcdn
+;;
+
+let get_macro_of_rule mmngr i =
+    Macro.get_macro mmngr.prcdn (Hashtbl.find mmngr.rules_for_macro i)
 ;;
 
 let is_macro mmngr i :bool =
@@ -89,11 +95,11 @@ let add_pgroup_rules mmngr p :unit =
     let p_right_arr = [| n p_right |] in
     let p_left_arr  = [| n p_left |]  in
     let p_sym_added = Hashtbl.create 5 in
-    let add_rule_g lhs rhs for_macro :unit =
+    let add_rule_g lhs rhs macro_idx :unit =
         add_rule g (r lhs rhs);
-        if for_macro then
+        if macro_idx >= 0 then
             let rule_idx = num_rules g - 1 in
-            Hashtbl.add mmngr.rules_for_macro rule_idx true
+            Hashtbl.add mmngr.rules_for_macro rule_idx macro_idx
     in
     let add_rule_p_up () :unit =
         (*let p_up_added = (Hashtbl.mem p_sym_added p_up) in*)
@@ -101,26 +107,27 @@ let add_pgroup_rules mmngr p :unit =
         if not (Hashtbl.mem p_sym_added p_up) then begin
             List.iter
                 (function
-                    | 0 -> add_rule_g p_up expr_terminal_arr false
-                    | j -> add_rule_g p_up [| n (get_p_hat j) |] false)
+                    | 0 -> add_rule_g p_up expr_terminal_arr (-1)
+                    | j -> add_rule_g p_up [| n (get_p_hat j) |] (-1))
                 (get_higher_pgroups mmngr.prcdn p);
             Hashtbl.add p_sym_added p_up true
         end
     in
     let add_rule_p_hat sym :unit =
         if not (Hashtbl.mem p_sym_added sym) then begin
-            add_rule_g p_hat [| n sym |] false;
+            add_rule_g p_hat [| n sym |] (-1);
             Hashtbl.add p_sym_added sym true
         end
     in
-    let add_macro_rule mcr :unit =
+    let add_macro_rule imcr :unit =
+        let mcr = Macro.get_macro mmngr.prcdn imcr in
         let op_fix = macro_to_op_fix mcr in
         (*let str_i = string_of_int (get_macro_index mmngr.prcdn mcr.id) in*)
         match mcr.fix with
-        | Closed -> add_rule_g p_hat op_fix true
+        | Closed -> add_rule_g p_hat op_fix imcr
         | Infix Non ->
                 (let rhs = Array.concat [ p_up_arr; op_fix; p_up_arr ] in
-                add_rule_g p_hat rhs true;
+                add_rule_g p_hat rhs imcr;
                 add_rule_p_up ())
         | Prefix | Infix Right -> (
                 let arr = match mcr.fix with
@@ -129,8 +136,8 @@ let add_pgroup_rules mmngr p :unit =
                     | _ -> assert false
                 in
                 add_rule_p_hat p_right;
-                add_rule_g p_right (Array.append arr p_right_arr) true;
-                add_rule_g p_right (Array.append arr p_up_arr) true;
+                add_rule_g p_right (Array.append arr p_right_arr) imcr;
+                add_rule_g p_right (Array.append arr p_up_arr) imcr;
                 add_rule_p_up ())
         | Postfix | Infix Left -> (
                 let arr = match mcr.fix with
@@ -139,12 +146,12 @@ let add_pgroup_rules mmngr p :unit =
                     | _ -> assert false
                 in
                 add_rule_p_hat p_left;
-                add_rule_g p_left (Array.append p_left_arr arr) true;
-                add_rule_g p_left (Array.append p_up_arr arr) true;
+                add_rule_g p_left (Array.append p_left_arr arr) imcr;
+                add_rule_g p_left (Array.append p_up_arr arr) imcr;
                 add_rule_p_up ())
     in
-    add_rule_g start_symbol [| n p_hat |] false;
-    DA.iter add_macro_rule (get_macros_in_pgroup mmngr.prcdn p)
+    add_rule_g start_symbol [| n p_hat |] (-1);
+    DA.iter add_macro_rule (get_macro_indices_in_pgroup mmngr.prcdn p)
 ;;
 
 let build_grammar mmngr :unit =
@@ -232,11 +239,12 @@ let rec substitute_vars (vars :expr StrMap.t) (body :macro_expr) :expr =
             (match a with
             | Literal lit -> Atom lit
             | Variable v -> StrMap.find v vars)
-    | ExprList mel -> ExprList (List.map (substitute_vars vars) mel)
+    | ExprList ml -> ExprList (List.map (substitute_vars vars) ml)
 ;;
 
 let expand_macro (mcr :'m macro) (exp :expr) :expr =
     let vars = extract_vars mcr.pattern exp in
+    (*Printf.printf "var mapping: %s\n" (Util.str_of_strmap str_of_expr vars);*)
     substitute_vars vars mcr.body
 ;;
 
@@ -249,7 +257,7 @@ let rec expand_non_macro mmngr i arr :expr =
 and expand_rule mmngr i arr :expr =
     if is_macro mmngr i then
         let f = expand_parse_tree mmngr in
-        expand_macro (get_macro mmngr i)
+        expand_macro (get_macro_of_rule mmngr i)
                 (* expand inner first, i.e. depth-first *)
                 (ExprList (Array.to_list (Array.map f arr)))
     else
