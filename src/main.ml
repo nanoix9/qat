@@ -4,6 +4,8 @@ open Parse
 open Earley
 open Macro
 open Expand
+open Eexpr
+open Translate
 open Evaluate
 
 (*=========== test parse ============*)
@@ -188,6 +190,17 @@ let print_graph () =
     (*printf "%s\n" (get_content plt.canvas)*)
 ;;
 
+(*================ Translate =================*)
+let test_trans () =
+    let exp = e [id "foo"; i 10] in
+    let ee = translate exp in
+    printf "%s\n" (str_of_eexpr ee)
+;;
+
+let trans_main () =
+    test_trans ()
+;;
+
 (*================ Evaluate =================*)
 let test_eval () =
     (*let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in*)
@@ -209,7 +222,9 @@ let main () =
 
     (*macro_main ()*)
 
-    eval_main ()
+    trans_main ()
+
+    (*eval_main ()*)
 
     (*print_graph ()*)
 ;;

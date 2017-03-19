@@ -2,7 +2,7 @@ type imm =
     | Int of int
     | Float of float
     | Str_ of string
-    | Bool of bool;;
+    | Bool of bool
 
 type token =
     | EOS
@@ -11,13 +11,13 @@ type token =
     | Terminator of string
     | Imm of imm
     | Id of string
-    | Op of string;;
+    | Op of string
 
 type 'a abs_expr =
     | Atom of 'a
-    | ExprList of 'a abs_expr list;;
+    | ExprList of 'a abs_expr list
 
-type expr = token abs_expr;;
+type expr = token abs_expr
 
 let str_of_imm = function
     | Int i -> "INT(" ^ (string_of_int i) ^ ")"
