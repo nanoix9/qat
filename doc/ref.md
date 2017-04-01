@@ -23,6 +23,8 @@
 
 - Dylan
 
+    Implement Lisp macro power but with Algol-like grammar
+
     <https://opendylan.org/books/drm/Rewrite_Rule_Examples>
 
 # Mixfix operator parsing
@@ -67,3 +69,37 @@
 - Loup
 
     <http://loup-vaillant.fr/tutorials/earley-parsing/recogniser>
+
+# Memory model in virtual machine
+
+## Python
+
+- <https://jakevdp.github.io/blog/2014/05/09/why-python-is-slow/>
+
+        a->PyObject_HEAD->typecode
+        a->val = 1
+
+        a->PyObject_HEAD is int (so is b)
+        so call binary_add<int, int>(a->val, b->val)
+
+- <http://yanyahua.com/2016/9/1/python%E4%B8%ADload_attr%E5%92%8Cstore_attr%E6%8C%87%E4%BB%A4>
+
+    LOAD_ATTR
+
+        PyObject_GetAttr(PyObject *v, PyObject *name){
+           PyObject_GetAttr(PyObject *v, PyObject *name)
+                return (*tp->tp_getattro)(v, name);
+        }
+
+    STORE_ATTR
+
+        PyObject_SetAttr(PyObject *v, PyObject *name, PyObject *value){
+            PyTypeObject *tp = Py_TYPE(v);
+                return (*tp->tp_setattro)(v, name, value);
+        }
+
+    而所有内置PyTypeObject的tp_setattro和tp_getattro都是(极少数例外)
+
+        PyObject_GenericGetAttr,                    /* tp_getattro */
+        PyObject_GenericSetAttr,                     /* tp_setattro */
+

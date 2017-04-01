@@ -4,9 +4,9 @@ open Parse
 open Earley
 open Macro
 open Expand
-open Eexpr
-open Translate
+open Env
 open Evaluate
+open Builtin
 
 (*=========== test parse ============*)
 let parse = Parse.parse;;
@@ -190,21 +190,17 @@ let print_graph () =
     (*printf "%s\n" (get_content plt.canvas)*)
 ;;
 
-(*================ Translate =================*)
-let test_trans () =
-    let exp = e [id "foo"; i 10] in
-    let ee = translate exp in
-    printf "%s\n" (str_of_eexpr ee)
-;;
-
-let trans_main () =
-    test_trans ()
-;;
-
 (*================ Evaluate =================*)
+let ee lst :eexpr = ExprList lst;;
+let sym s :eexpr = Atom (Sym s);;
+let i n :eexpr = Atom (Obj (make_int n));;
+
 let test_eval () =
     (*let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in*)
-    let exp = e [id "foo"; i 10] in
+    let exp = ee [ sym "do";
+        ee [sym "def"; sym "x"; i 10];
+        sym "x"]
+    in
     let res = evaluate exp in
     ()
 ;;
@@ -222,9 +218,7 @@ let main () =
 
     (*macro_main ()*)
 
-    trans_main ()
-
-    (*eval_main ()*)
+    eval_main ()
 
     (*print_graph ()*)
 ;;
