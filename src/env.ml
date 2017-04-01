@@ -1,20 +1,38 @@
 type sym = string
 type fullname = string list
-type typ = Typ of fullname
-type value =
+
+type typ = {name: fullname; super: obj option}
+and obj = {mutable t: obj; mutable v: value}
+and value =
     | ValNone
     | ValInt of int
+    | ValFloat of float
     | ValStr of string
-type obj = {t: typ; v: value}
+    | ValBool of bool
+    | ValArr of obj array
+    | ValDict of (obj, obj) Hashtbl.t
+    | ValType of typ
+    (*| ValClosure of closure*)
+
+let builtin = "builtin";;
+
+let rec obj_o = {t=type_o; v=ValType {name=[builtin; "object"]; super=None}}
+and type_o = {t=type_o; v=ValType {name=[builtin; "type"]; super=Some obj_o}}
+;;
+
+let make_obj (t :obj) (v :value) :obj =
+    assert (t.t == type_o);
+    {t=t; v=v}
+;;
 
 type env = {dict: (sym, obj) Hashtbl.t;
-    parent: env option}
+    outer: env option}
 
-let typ_obj = Typ ["Object"]
-let none = {t=typ_obj; v=ValNone}
+let none = make_obj type_o ValNone
+;;
 
-let make_env parent :env =
-    {dict=Hashtbl.create 1; parent=parent}
+let make_env outer :env =
+    {dict=Hashtbl.create 1; outer=outer}
 ;;
 
 let set env sym obj :unit =
