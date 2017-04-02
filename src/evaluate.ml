@@ -43,7 +43,7 @@ and eval_atom (env :env) (atom :eatom) :obj =
     | Obj o -> o
 and eval_list (env :env) (el :eexpr list) :obj =
     match el with
-    | [] -> none
+    | [] -> nil
     | [a] -> eval_rec env a
     | (Atom (Sym opr))::opd -> (match opr with
         | "do" -> eval_do env opd
@@ -63,23 +63,33 @@ and eval_do env opd =
             let _ = eval_rec env first in
             eval_do env rest
 and eval_if env opd =
-    none
+    nil
 and eval_def env opd =
     let _ = match opd with
         | (Atom (Sym sym))::body::[] ->
                 Env.set env sym (eval_rec env body)
         | _ -> raise EvalErr
-    in none
+    in nil
 and eval_type env opd =
-    none
+    let name, sup = match opd with
+        | [Atom (Sym name)] -> name, obj_o
+        | Atom (Sym name)::Atom (Sym "isa")::Atom (Sym sup_name)::[] ->
+                name, (Env.get env sup_name)
+        | _ -> raise EvalErr
+    in
+    let fname = make_fullname name (get_ns env) in
+    let t = make_type fname sup in
+    Env.set env name t;
+    t
 and eval_func env opd =
-    none
+    nil
 and eval_apply opr opd =
-    none
+    nil
 ;;
 
-let global_env = make_env None;;
+let global_env = make_env "__main__" None;;
 
 let evaluate exp =
     eval_rec global_env exp
 ;;
+
