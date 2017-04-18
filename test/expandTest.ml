@@ -1,6 +1,6 @@
 open OUnit2
 open Expand
-open Expr
+open Ast
 open Macro
 open Earley
 
@@ -25,7 +25,7 @@ let assert_expand_parse c setup expect exp =
     (*Util.println (show_macro_manager m);*)
     assert_equal ~ctxt:c
         ~cmp:parse_tree_equals
-        ~printer:(str_of_parse_tree str_of_expr)
+        ~printer:(str_of_parse_tree str_of_ast)
         expect (parse_pattern m exp)
 ;;
 
@@ -45,15 +45,15 @@ let assert_expand c setup expect exp =
     build_grammar m;
     (*Util.println (show_macro_manager m);*)
     assert_equal ~ctxt:c
-        ~printer:str_of_expr
+        ~printer:str_of_ast
         expect (expand m exp)
 ;;
 
 
-let e lst :expr = ExprList lst;;
-let id s :expr = Atom (Id s);;
-let op s :expr = Atom (Op s);;
-let i n :expr = Atom (Imm (Int n));;
+let e lst :ast = NodeList lst;;
+let id s :ast = Atom (Id s);;
+let op s :ast = Atom (Op s);;
+let i n :ast = Atom (Imm (Int n));;
 
 let lf_id s = Leaf (id s);;
 let lf_op s = Leaf (op s);;

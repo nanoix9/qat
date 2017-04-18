@@ -103,3 +103,13 @@
         PyObject_GenericGetAttr,                    /* tp_getattro */
         PyObject_GenericSetAttr,                     /* tp_setattro */
 
+# Basic operations
+
+## Common Lisp
+
+- [HyperSpec](http://www.lispworks.com/documentation/HyperSpec/Body/03_abab.htm)
+
+- [Practical Common Lisp, 20. Special Operators](http://www.gigamonkeys.com/book/the-special-operators.html)
+
+- [Implementation Notes for GNU CLISP](http://www.clisp.org/impnotes.html)
+

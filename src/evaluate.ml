@@ -1,4 +1,4 @@
-open Expr
+open Ast
 open Env
 open Builtin
 
@@ -9,7 +9,7 @@ type eatom =
     | Obj of obj
 ;;
 
-type eexpr = eatom abs_expr;;
+type eexpr = eatom abs_tree;;
 
 let imm_to_obj (i :imm) :obj =
     match i with
@@ -27,16 +27,16 @@ let pre_eval_token (token :token) :eatom  =
     | _ -> assert false
 ;;
 
-let rec pre_eval (exp :expr) :eexpr =
+let rec pre_eval (exp :ast) :eexpr =
     match exp with
     | Atom t -> Atom (pre_eval_token t)
-    | ExprList el -> ExprList (List.map pre_eval el)
+    | NodeList el -> NodeList (List.map pre_eval el)
 ;;
 
 let rec eval_rec (env :env) (ee :eexpr) :obj =
     match ee with
     | Atom t -> eval_atom env t
-    | ExprList el -> eval_list env el
+    | NodeList el -> eval_list env el
 and eval_atom (env :env) (atom :eatom) :obj =
     match atom with
     | Sym s -> Env.get env s

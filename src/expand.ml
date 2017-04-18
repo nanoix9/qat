@@ -1,4 +1,4 @@
-open Expr;;
+open Ast;;
 open Macro;;
 open Earley;;
 module DA = DynArray;;
@@ -12,7 +12,7 @@ type ('m, 't) macro_manager = {
 
 let start_symbol = "E";;
 
-let create_macro_manager () :(macro_elem, Expr.expr) macro_manager =
+let create_macro_manager () :(macro_elem, Ast.ast) macro_manager =
     {prcdn=make_precedences ();
     gram=g start_symbol [| |];
     rules_for_macro=Hashtbl.create 100}
@@ -58,19 +58,19 @@ let is_macro mmngr i :bool =
     Hashtbl.mem mmngr.rules_for_macro i
 ;;
 
-let macro_to_op_fix mcr :(expr symbol) array =
-    let f m :(expr symbol) =
+let macro_to_op_fix mcr :(ast symbol) array =
+    let f m :(ast symbol) =
         match m with
         | Atom a ->
                 (match a with
                 | Literal lit -> t (str_of_token lit) (fun x -> x = Atom lit)
                 | Variable v -> n start_symbol)
-        | ExprList _ -> raise (MacroErr
+        | NodeList _ -> raise (MacroErr
                 "Not support list as macro pattern element")
     in
     match mcr.pattern with
     | Atom a -> raise (MacroErr "Macro pattern should be a list")
-    | ExprList el -> let sub =
+    | NodeList el -> let sub =
         (let arr = Array.of_list el in
         match mcr.fix with
         | Closed -> arr
@@ -81,7 +81,7 @@ let macro_to_op_fix mcr :(expr symbol) array =
         Array.map f sub
 ;;
 
-let expr_terminal_arr = [| t "e" (fun x -> true) |];;
+let ast_terminal_arr = [| t "e" (fun x -> true) |];;
 
 let add_pgroup_rules mmngr p :unit =
     let g = mmngr.gram in
@@ -107,7 +107,7 @@ let add_pgroup_rules mmngr p :unit =
         if not (Hashtbl.mem p_sym_added p_up) then begin
             List.iter
                 (function
-                    | 0 -> add_rule_g p_up expr_terminal_arr (-1)
+                    | 0 -> add_rule_g p_up ast_terminal_arr (-1)
                     | j -> add_rule_g p_up [| n (get_p_hat j) |] (-1))
                 (get_higher_pgroups mmngr.prcdn p);
             Hashtbl.add p_sym_added p_up true
@@ -158,8 +158,8 @@ let build_grammar mmngr :unit =
     let f i :unit =
         (*Printf.printf "dfs: %d\n" i;*)
         match i with
-        (*precedence 0 is a special one for expr terminal*)
-        | 0 -> add_rule mmngr.gram (r start_symbol expr_terminal_arr)
+        (*precedence 0 is a special one for ast terminal*)
+        | 0 -> add_rule mmngr.gram (r start_symbol ast_terminal_arr)
         | _ -> add_pgroup_rules mmngr i
     in
     (*add_rule mmngr.gram (r start_symbol [| t (fun x -> true) |]);*)
@@ -167,11 +167,11 @@ let build_grammar mmngr :unit =
     ()
 ;;
 
-let rec parse_tree_to_expr (tree :'a parse_tree) :expr =
+let rec parse_tree_to_ast (tree :'a parse_tree) :ast =
     match tree with
     | Leaf lf -> lf
     | Tree (i, arr) ->
-            ExprList (Array.to_list (Array.map parse_tree_to_expr arr))
+            NodeList (Array.to_list (Array.map parse_tree_to_ast arr))
 ;;
 
 let rec simplify_parse_tree mmngr ptree :'a parse_tree =
@@ -188,81 +188,81 @@ let rec simplify_parse_tree mmngr ptree :'a parse_tree =
                 f (Array.get arr 0)
 ;;
 
-let str_of_expr_array arr =
-    "[" ^ (Util.joina ", " (Array.map str_of_expr arr)) ^ "]"
+let str_of_ast_array arr =
+    "[" ^ (Util.joina ", " (Array.map str_of_ast arr)) ^ "]"
 ;;
 
 let parse_pattern_raw mmngr exp :'a parse_tree =
     let arr = match exp with
         | Atom a -> raise (MacroErr "Input should be a list, not an atom")
-        | ExprList el -> Array.of_list el
+        | NodeList el -> Array.of_list el
     in
-    (*Util.println (str_of_items str_of_expr mmngr.gram (earley_match mmngr.gram arr));*)
+    (*Util.println (str_of_items str_of_ast mmngr.gram (earley_match mmngr.gram arr));*)
     try parse mmngr.gram arr
     with EarleyErr i ->
         let ierr = i - 1 in
         raise (MacroErr ("macro expanding error at token " ^ string_of_int i
             ^ ": "
-            ^ str_of_expr_array (Array.sub arr ierr (Array.length arr - ierr))))
+            ^ str_of_ast_array (Array.sub arr ierr (Array.length arr - ierr))))
 ;;
 
 let parse_pattern mmngr exp :'a parse_tree =
     simplify_parse_tree mmngr (parse_pattern_raw mmngr exp)
 ;;
 
-let rec extract_vars_list (patt_list :macro_expr list)
-                      (expr_list :expr list)
-                      :expr StrMap.t =
-    match patt_list, expr_list with
+let rec extract_vars_list (patt_list :macro_ast list)
+                      (ast_list :ast list)
+                      :ast StrMap.t =
+    match patt_list, ast_list with
     | [], [] -> StrMap.empty
     | p::ps, e::es ->
             let mmap_first = extract_vars p e in
             let mmap_rest = extract_vars_list ps es in
             Util.merge_str_map mmap_first mmap_rest
     | _ -> raise (MacroErr "")
-and extract_vars_atom (patt :macro_elem) (exp :expr) :expr StrMap.t =
+and extract_vars_atom (patt :macro_elem) (exp :ast) :ast StrMap.t =
     match patt, exp with
     | Literal lit, Atom a when lit = a -> StrMap.empty
     | Variable v, _ -> StrMap.add v exp StrMap.empty
     | _ -> raise (MacroErr "")
-and extract_vars (pattern :macro_expr) (exp :expr) :expr StrMap.t =
+and extract_vars (pattern :macro_ast) (exp :ast) :ast StrMap.t =
     match pattern, exp with
     | Atom a, e -> extract_vars_atom a e
     (*TODO: change to foldr *)
-    | ExprList pl,  ExprList el -> extract_vars_list pl el
+    | NodeList pl,  NodeList el -> extract_vars_list pl el
     | _ -> raise (MacroErr "")
 ;;
 
-let rec substitute_vars (vars :expr StrMap.t) (body :macro_expr) :expr =
+let rec substitute_vars (vars :ast StrMap.t) (body :macro_ast) :ast =
     match body with
     | Atom a ->
             (match a with
             | Literal lit -> Atom lit
             | Variable v -> StrMap.find v vars)
-    | ExprList ml -> ExprList (List.map (substitute_vars vars) ml)
+    | NodeList ml -> NodeList (List.map (substitute_vars vars) ml)
 ;;
 
-let expand_macro (mcr :'m macro) (exp :expr) :expr =
+let expand_macro (mcr :'m macro) (exp :ast) :ast =
     let vars = extract_vars mcr.pattern exp in
-    (*Printf.printf "var mapping: %s\n" (Util.str_of_strmap str_of_expr vars);*)
+    (*Printf.printf "var mapping: %s\n" (Util.str_of_strmap str_of_ast vars);*)
     substitute_vars vars mcr.body
 ;;
 
-let rec expand_non_macro mmngr i arr :expr =
+let rec expand_non_macro mmngr i arr :ast =
     if Array.length arr <> 1 then
         raise (MacroErr
             "Grammar rules not for a macro should have a length-one rhs")
     else
         expand_parse_tree mmngr (Array.get arr 0)
-and expand_rule mmngr i arr :expr =
+and expand_rule mmngr i arr :ast =
     if is_macro mmngr i then
         let f = expand_parse_tree mmngr in
         expand_macro (get_macro_of_rule mmngr i)
                 (* expand inner first, i.e. depth-first *)
-                (ExprList (Array.to_list (Array.map f arr)))
+                (NodeList (Array.to_list (Array.map f arr)))
     else
         expand_non_macro mmngr i arr
-and expand_parse_tree mmngr ptree :expr =
+and expand_parse_tree mmngr ptree :ast =
     match ptree with
     | Leaf lf -> lf
     | Tree (i, arr) -> expand_rule mmngr i arr

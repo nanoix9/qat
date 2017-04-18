@@ -13,11 +13,11 @@ type token =
     | Id of string
     | Op of string
 
-type 'a abs_expr =
+type 'a abs_tree =
     | Atom of 'a
-    | ExprList of 'a abs_expr list
+    | NodeList of 'a abs_tree list
 
-type expr = token abs_expr
+type ast = token abs_tree
 
 let str_of_imm = function
     | Int i -> "INT(" ^ (string_of_int i) ^ ")"
@@ -34,17 +34,17 @@ let str_of_token = function
     | Id i -> "ID(" ^ i ^ ")"
     | Op o -> "OP(" ^ o ^ ")";;
 
-let rec str_of_abs_expr str_of_a e = match e with
+let rec str_of_abs_tree str_of_a e = match e with
     | Atom t -> str_of_a t
-    | ExprList e -> "[" ^ String.concat ", "
-            (List.map (str_of_abs_expr str_of_a) e) ^ "]" ;;
+    | NodeList e -> "[" ^ String.concat ", "
+            (List.map (str_of_abs_tree str_of_a) e) ^ "]" ;;
 
-let str_of_expr = str_of_abs_expr str_of_token ;;
+let str_of_ast = str_of_abs_tree str_of_token ;;
 
-let rec eq_expr (e:expr) (f:expr) :bool =
+let rec eq_ast (e:ast) (f:ast) :bool =
     match e, f with
     | Atom t, Atom s -> t = s
-    | ExprList e, ExprList f -> List.length e = List.length f &&
-                                List.for_all2 eq_expr e f
+    | NodeList e, NodeList f -> List.length e = List.length f &&
+                                List.for_all2 eq_ast e f
     | _ -> false;;
 

@@ -1,5 +1,5 @@
 open OUnit2
-open Expr
+open Ast
 open Lex
 
 let lex_str s = pop_token (new_stream s)

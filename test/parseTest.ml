@@ -1,9 +1,12 @@
 open OUnit2
-open Expr
+open Ast
 open Parse
 
 let assert_parse c expect str =
-    assert_equal ~ctxt:c ~printer:str_of_expr expect (parse str)
+    assert_equal ~ctxt:c ~printer:str_of_ast expect (parse str)
+;;
+
+let ls x = NodeList x;;
 
 (* Name the test cases and group them together *)
 let suite =
@@ -14,45 +17,45 @@ let suite =
         "test_op" >:: (fun c -> assert_parse c (Atom (Op "+-^")) "+-^");
 
         "test_group_paren" >:: (fun c -> assert_parse c
-            (ExprList [Atom (Id "a"); Atom (Op "+"); Atom (Id "b")]) "(a+b)");
+            (ls [Atom (Id "a"); Atom (Op "+"); Atom (Id "b")]) "(a+b)");
 
         "test_seq" >:: (fun c -> assert_parse c
-            (ExprList [Atom (Id "do");
-                ExprList [Atom (Id "x"); Atom (Op "-"); Atom (Id "y")]])
+            (ls [Atom (Id "do");
+                ls [Atom (Id "x"); Atom (Op "-"); Atom (Id "y")]])
             "(x - y;)");
 
         "test_seq_long" >:: (fun c -> assert_parse c
-            (ExprList [Atom (Id "do");
-                ExprList [Atom (Id "x"); Atom (Op "-");
+            (ls [Atom (Id "do");
+                ls [Atom (Id "x"); Atom (Op "-");
                     Atom (Id "y"); Atom (Op "*"); Atom (Id "zz");
                     Atom (Op "%"); Atom (Id "u"); Atom (Op "<<");
                     Atom (Imm (Int 2))]])
             "(x - y * zz % u << 2;)");
 
         "test_mixfix" >:: (fun c -> assert_parse c
-            (ExprList [Atom (Id "if"); Atom (Id "cond"); Atom (Id "then");
-                ExprList [Atom (Op "{}"); Atom (Id "do");
-                    ExprList [Atom (Id "block"); Atom (Id "for")];
-                    ExprList [Atom (Id "_true")]];
+            (ls [Atom (Id "if"); Atom (Id "cond"); Atom (Id "then");
+                ls [Atom (Op "{}"); Atom (Id "do");
+                    ls [Atom (Id "block"); Atom (Id "for")];
+                    ls [Atom (Id "_true")]];
                 Atom (Id "else");
-                ExprList [Atom (Op "{}"); Atom (Id "do");
-                    ExprList [Atom (Id "block")];
-                    ExprList [Atom (Id "for_false")]]])
+                ls [Atom (Op "{}"); Atom (Id "do");
+                    ls [Atom (Id "block")];
+                    ls [Atom (Id "for_false")]]])
             "(if cond then { block for; _true;} else { block; for_false;})");
 
         "test_nested" >:: (fun c -> assert_parse c
-            (ExprList [Atom (Id "if"); Atom (Id "x");
+            (ls [Atom (Id "if"); Atom (Id "x");
                 Atom (Op "=="); Atom (Imm (Str_ "foo"));
-                ExprList [Atom (Id "if"); Atom (Id "bar");
+                ls [Atom (Id "if"); Atom (Id "bar");
                     Atom (Op "=="); Atom (Imm (Int 2));
-                    ExprList [Atom (Op "{}"); Atom (Id "do");
-                        ExprList [Atom (Id "if"); Atom (Id "foobar");
+                    ls [Atom (Op "{}"); Atom (Id "do");
+                        ls [Atom (Id "if"); Atom (Id "foobar");
                             Atom (Op "&&"); Atom (Id "barfoo");
-                            ExprList [Atom (Op "{}"); Atom (Id "do");
-                                ExprList [Atom (Id "do"); Atom (Id "it")]]]]];
+                            ls [Atom (Op "{}"); Atom (Id "do");
+                                ls [Atom (Id "do"); Atom (Id "it")]]]]];
             Atom (Id "else");
-            ExprList [Atom (Op "{}"); Atom (Id "do");
-                ExprList [Atom (Id "do"); Atom (Id "else")]]])
+            ls [Atom (Op "{}"); Atom (Id "do");
+                ls [Atom (Id "do"); Atom (Id "else")]]])
             "(if x == \"foo\" (
                 if bar == 2 {
                     if foobar && barfoo {

@@ -1,4 +1,4 @@
-open Expr;;
+open Ast;;
 open Txtplot;;
 module S = Core.Std.String;;
 module DA = DynArray;;
@@ -29,13 +29,13 @@ type macro_name =
     | Name of string
 ;;
 
-type macro_expr = macro_elem abs_expr;;
+type macro_ast = macro_elem abs_tree;;
 
 type 'm macro = {
     id: macro_name list;
     fix: fixity;
-    pattern: 'm abs_expr;
-    body: 'm abs_expr }
+    pattern: 'm abs_tree;
+    body: 'm abs_tree }
 ;;
 
 let macro_elem_to_name e :macro_name =
@@ -49,19 +49,19 @@ let pattern_to_name pattern :macro_name list =
         match e with
         | Atom a -> macro_elem_to_name a
         | _ -> raise (MacroErr
-                "Do not support compound expression in macro pattern")
+                "Do not support compound astession in macro pattern")
     in
     match pattern with
     | Atom _ -> raise (MacroErr "Macro pattern must be a list")
-    | ExprList el -> List.map f el
+    | NodeList el -> List.map f el
 ;;
 
 let new_macro fix patt body :macro_elem macro =
     let to_atoms = List.map (fun x -> Atom x) in {
         id=List.map macro_elem_to_name patt;
         fix=fix; (* TODO: checking fixity *)
-        pattern=ExprList (to_atoms patt);
-        body=ExprList (to_atoms body)}
+        pattern=NodeList (to_atoms patt);
+        body=NodeList (to_atoms body)}
 ;;
 
 let str_of_fixity f :string =
@@ -90,16 +90,16 @@ let str_of_macro_elem e :string =
     | Variable v -> "V(" ^ v ^ ")"
 ;;
 
-let str_of_macro_expr e :string =
-    str_of_abs_expr str_of_macro_elem e
+let str_of_macro_ast e :string =
+    str_of_abs_tree str_of_macro_elem e
 ;;
 
 let str_of_macro mcr :string =
     Printf.sprintf "MACRO:\nName: %s\nFixity: %s\nPattern:\n%s\nBody:\n%s\n"
             (str_of_macro_id mcr.id)
             (str_of_fixity mcr.fix)
-            (str_of_macro_expr mcr.pattern)
-            (str_of_macro_expr mcr.body)
+            (str_of_macro_ast mcr.pattern)
+            (str_of_macro_ast mcr.body)
 ;;
 
 
