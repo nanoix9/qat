@@ -72,7 +72,7 @@ and eval_def env opd =
     in nil
 and eval_type env opd =
     let name, sup = match opd with
-        | [Atom (Sym name)] -> name, obj_o
+        | [Atom (Sym name)] -> name, qobj
         | Atom (Sym name)::Atom (Sym "isa")::Atom (Sym sup_name)::[] ->
                 name, (Env.get env sup_name)
         | _ -> raise EvalErr
