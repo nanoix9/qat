@@ -6,12 +6,22 @@ exception EvalErr
 
 type eatom =
     | Sym of sym
-    | Obj of obj
+    | Obj of q_obj
 ;;
 
-type eexpr = eatom abs_tree;;
+type estmt = eatom abs_tree;;
 
-let imm_to_obj (i :imm) :obj =
+type evalret =
+    | EvalVal of q_obj
+    | EvalNone
+;;
+
+let str_of_evalret = function
+    | EvalVal o -> str_of_obj o
+    | EvalNone -> "EVAL_NONE"
+;;
+
+let imm_to_obj (i :imm) :q_obj =
     match i with
     | Int n -> make_int n
     | Float f -> make_float f
@@ -27,23 +37,25 @@ let pre_eval_token (token :token) :eatom  =
     | _ -> assert false
 ;;
 
-let rec pre_eval (exp :ast) :eexpr =
+let rec pre_eval (exp :ast) :estmt =
     match exp with
     | Atom t -> Atom (pre_eval_token t)
     | NodeList el -> NodeList (List.map pre_eval el)
 ;;
 
-let rec eval_rec (env :env) (ee :eexpr) :obj =
+let rec eval_rec (env :env) (ee :estmt) :evalret =
     match ee with
     | Atom t -> eval_atom env t
     | NodeList el -> eval_list env el
-and eval_atom (env :env) (atom :eatom) :obj =
-    match atom with
-    | Sym s -> Env.get env s
-    | Obj o -> o
-and eval_list (env :env) (el :eexpr list) :obj =
+and eval_atom (env :env) (atom :eatom) :evalret =
+    let o = match atom with
+        | Sym s -> Env.get env s
+        | Obj o -> o
+    in
+    EvalVal o
+and eval_list (env :env) (el :estmt list) :evalret =
     match el with
-    | [] -> nil
+    | [] -> EvalNone
     | [a] -> eval_rec env a
     | (Atom (Sym opr))::opd -> (match opr with
         | "do" -> eval_do env opd
@@ -51,6 +63,8 @@ and eval_list (env :env) (el :eexpr list) :obj =
         | "def" -> eval_def env opd
         | "type" -> eval_type env opd
         | "func" -> eval_func env opd
+        | "return" -> eval_return env opd
+        | "scope" -> eval_scope env opd
         | _ -> eval_apply opr opd
     )
     | _ -> raise EvalErr
@@ -63,16 +77,42 @@ and eval_do env opd =
             let _ = eval_rec env first in
             eval_do env rest
 and eval_if env opd =
-    nil
+    let eval_to_bool (cond :estmt) :bool =
+        match eval_rec env cond with
+        | EvalVal v when v.t == bool_t ->
+                (match v.v with
+                | ValBool b -> b
+                | _ -> raise EvalErr)
+        | _ -> raise EvalErr
+    in
+    match opd with
+    | [cond; stmt_true;] ->
+            if eval_to_bool cond then
+                eval_rec env stmt_true
+            else
+                EvalNone
+    | [cond; stmt_true; stmt_false;] ->
+            if eval_to_bool cond then
+                eval_rec env stmt_true
+            else
+                eval_rec env stmt_false
+    | _ -> raise EvalErr
 and eval_def env opd =
     let _ = match opd with
         | (Atom (Sym sym))::body::[] ->
-                Env.set env sym (eval_rec env body)
+                (match (eval_rec env body) with
+                    | EvalVal o ->
+                            if not (Env.mem env sym) then
+                                Env.set env sym o
+                            else
+                                raise EvalErr
+                    | _ -> raise EvalErr)
         | _ -> raise EvalErr
-    in nil
+    in
+    EvalNone
 and eval_type env opd =
     let name, sup = match opd with
-        | [Atom (Sym name)] -> name, qobj
+        | [Atom (Sym name)] -> name, obj_o
         | Atom (Sym name)::Atom (Sym "isa")::Atom (Sym sup_name)::[] ->
                 name, (Env.get env sup_name)
         | _ -> raise EvalErr
@@ -80,11 +120,21 @@ and eval_type env opd =
     let fname = make_fullname name (get_ns env) in
     let t = make_type fname sup in
     Env.set env name t;
-    t
+    EvalVal t
 and eval_func env opd =
-    nil
+    EvalNone
+and eval_return env opd =
+    match opd with
+    | [stmt] -> eval_rec env stmt
+    | _ -> raise EvalErr
+and eval_scope env opd =
+    let name, stmt = match opd with
+        | Atom (Sym name)::[stmt] -> name, stmt
+        | [stmt] -> "", stmt
+    in
+    eval_rec (make_sub_env name env) stmt
 and eval_apply opr opd =
-    nil
+    EvalNone
 ;;
 
 let global_env = make_env "__main__" None;;

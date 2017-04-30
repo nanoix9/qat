@@ -191,10 +191,11 @@ let print_graph () =
 ;;
 
 (*================ Evaluate =================*)
-let ee lst :eexpr = NodeList lst;;
-let sym s :eexpr = Atom (Sym s);;
-let i n :eexpr = Atom (Obj (make_int n));;
-let s t :eexpr = Atom (Obj (make_str t));;
+let ee lst :estmt = NodeList lst;;
+let sym s :estmt = Atom (Sym s);;
+let i n :estmt = Atom (Obj (make_int n));;
+let s t :estmt = Atom (Obj (make_str t));;
+let b x :estmt = Atom (Obj (make_bool x));;
 
 let test_eval () =
     (*let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in*)
@@ -202,14 +203,14 @@ let test_eval () =
         (*ee [sym "def"; sym "x"; i 10];*)
         ee [sym "def"; sym "x"; s "Hello World!"];
         (*sym "x";*)
-        ee [sym "if"; sym"x"];
         ee [sym "type"; sym"user"];
         ee [sym "type"; sym"qatUser"; sym"isa"; sym"user"];
         sym"qatUser";
+        ee [sym "if"; b true; i 10];
         ]
     in
     let res = evaluate exp in
-    printf "result: %s\n" (str_of_obj res)
+    printf "result: %s\n" (str_of_evalret res)
 ;;
 
 let eval_main () =

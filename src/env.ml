@@ -1,21 +1,21 @@
 type sym = string
 type fullname = string list
 
-type typ = {name: fullname; super: obj option}
-and obj = {mutable t: obj; mutable v: value}
+type q_type = {name: fullname; super: q_obj option}
+and q_obj = {mutable t: q_obj; mutable v: value}
 and value =
     | ValNil
     | ValInt of int
     | ValFloat of float
     | ValStr of string
     | ValBool of bool
-    | ValArr of obj array
-    | ValDict of (obj, obj) Hashtbl.t
-    | ValType of typ
+    | ValArr of q_obj array
+    | ValDict of (q_obj, q_obj) Hashtbl.t
+    | ValType of q_type
     (*| ValClosure of closure*)
 ;;
 
-type env = {dict: (sym, obj) Hashtbl.t;
+type env = {dict: (sym, q_obj) Hashtbl.t;
     outer: env option;
     ns: fullname}
 
@@ -43,11 +43,15 @@ let make_env name outer :env =
     {dict=Hashtbl.create 1; outer=outer; ns=ns}
 ;;
 
-let set env sym obj :unit =
-    Hashtbl.replace env.dict sym obj
+let make_sub_env name outer :env =
+    make_env name (Some outer)
 ;;
 
-let get env sym :obj =
+let set env sym q_obj :unit =
+    Hashtbl.replace env.dict sym q_obj
+;;
+
+let get env sym :q_obj =
     Hashtbl.find env.dict sym
 ;;
 
