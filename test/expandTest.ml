@@ -219,18 +219,19 @@ let suite =
                 add_macro_between m mge (Some msub.id) None;
             in
             assert_expand c f
-                (e [])
+                (e [id"while_loop";
+                    e [id"ge"; id"x"; i 0];
+                    e [id"if_else";
+                        e [id"ge"; id"foo"; i 10];
+                        e [id"mul"; id"foo"; id"x"];
+                        e [id"dec"; id"x"]]])
                 (e [id"while"; id "x"; op ">="; i 0; id"do";
                         id"if"; id"foo"; op">="; i 10; id"then";
-                            id"foo"; op"*"; op"x";
+                            id"foo"; op"*"; id"x";
                         id"else";
                             e [id"x"; op"--"];
                     id"done"])
-
-                (*(e [id "a"; op "+"; id "b"; op "*"; id "c";*)
-                    (*op"**"; id"d"; op"**"; id"e";])*)
             );
-
 
     ]
 ;;

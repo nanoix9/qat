@@ -268,8 +268,18 @@ and expand_parse_tree mmngr ptree :ast =
     | Tree (i, arr) -> expand_rule mmngr i arr
 ;;
 
-let expand mmngr exp =
-    let tree = parse_pattern mmngr exp in
+let expand_one_level mmngr stmt =
+    let tree = parse_pattern mmngr stmt in
     expand_parse_tree mmngr tree
 ;;
 
+let rec expand mmngr stmt =
+    match stmt with
+    | (Atom _) as a -> a
+    | NodeList nl -> let deep_expanded =
+        NodeList (List.map (expand mmngr) nl) in
+        try
+            expand_one_level mmngr deep_expanded
+        with
+            | MacroErr _ -> stmt
+;;

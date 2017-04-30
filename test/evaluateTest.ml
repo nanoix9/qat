@@ -23,9 +23,9 @@ let i n :ast = Atom (Imm (Int n));;
 (* Name the test cases and group them together *)
 let suite =
     "evaluate" >::: [
-        "test_id" >:: (fun c -> assert_eval_val c
+        "test_sym" >:: (fun c -> assert_eval_val c
             (make_int 10)
-            (i 11));
+            (i 10));
 
     ]
 
