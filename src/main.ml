@@ -209,7 +209,7 @@ let test_eval () =
         ee [sym "if"; b true; i 10];
         ]
     in
-    let res = evaluate exp in
+    let res = eval_estmt exp in
     printf "result: %s\n" (str_of_evalret res)
 ;;
 

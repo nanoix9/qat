@@ -15,6 +15,21 @@ and value =
     (*| ValClosure of closure*)
 ;;
 
+let eq_value v1 v2 :bool =
+    match v1, v2 with
+    | ValNil, ValNil -> true
+    | ValInt i1, ValInt i2 -> i1 = i2
+    | ValFloat f1, ValFloat f2 -> f1 = f2
+    | ValStr s1, ValStr s2 -> s1 = s2
+    | ValBool b1, ValBool b2 -> b1 = b2
+    (*| ValArr a1, ValArr a2 -> *)
+
+;;
+
+let eq_q_obj o1 o2 :bool =
+    o1.t == o2.t && eq_value o1.v o2.v
+;;
+
 type env = {dict: (sym, q_obj) Hashtbl.t;
     outer: env option;
     ns: fullname}

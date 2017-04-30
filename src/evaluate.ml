@@ -16,6 +16,12 @@ type evalret =
     | EvalNone
 ;;
 
+let eq_evalret r1 r2 =
+    match r1, r2 with
+    | EvalVal o1, EvalVal o2 -> eq_q_obj o1 o2
+    | _ -> r1 = r2
+;;
+
 let str_of_evalret = function
     | EvalVal o -> str_of_obj o
     | EvalNone -> "EVAL_NONE"
@@ -139,7 +145,9 @@ and eval_apply opr opd =
 
 let global_env = make_env "__main__" None;;
 
-let evaluate exp =
-    eval_rec global_env exp
+let eval_estmt e = eval_rec global_env e;;
+
+let evaluate ast =
+    eval_rec global_env (pre_eval ast)
 ;;
 
