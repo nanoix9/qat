@@ -15,7 +15,15 @@ and value =
     (*| ValClosure of closure*)
 ;;
 
-let eq_value v1 v2 :bool =
+let rec eq_q_obj o1 o2 :bool =
+    o1.t == o2.t && eq_value o1.v o2.v
+and eq_q_type t1 t2 :bool =
+    t1.name = t2.name &&
+    (match t1.super, t2.super with
+    | None, None -> true
+    | Some o1, Some o2 -> eq_q_obj o1 o2
+    | _ -> false)
+and eq_value v1 v2 :bool =
     match v1, v2 with
     | ValNil, ValNil -> true
     | ValInt i1, ValInt i2 -> i1 = i2
@@ -23,11 +31,7 @@ let eq_value v1 v2 :bool =
     | ValStr s1, ValStr s2 -> s1 = s2
     | ValBool b1, ValBool b2 -> b1 = b2
     (*| ValArr a1, ValArr a2 -> *)
-
-;;
-
-let eq_q_obj o1 o2 :bool =
-    o1.t == o2.t && eq_value o1.v o2.v
+    | ValType t1, ValType t2 -> eq_q_type t1 t2
 ;;
 
 type env = {dict: (sym, q_obj) Hashtbl.t;
@@ -40,6 +44,12 @@ let make_fullname name parent :fullname =
     match name with
     | "" -> parent
     | n -> n::parent
+;;
+
+let rec fullname_of_list lst :fullname =
+    match lst with
+    | [] -> name_root
+    | x::xs -> make_fullname x (fullname_of_list xs)
 ;;
 
 let get_fullname ns =

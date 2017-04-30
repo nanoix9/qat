@@ -203,13 +203,14 @@ let test_eval () =
         (*ee [sym "def"; sym "x"; i 10];*)
         ee [sym "def"; sym "x"; s "Hello World!"];
         (*sym "x";*)
-        ee [sym "type"; sym"user"];
-        ee [sym "type"; sym"qatUser"; sym"isa"; sym"user"];
+        ee [sym"def"; sym"user"; ee [sym "type"; sym"user"]];
+        ee [sym"def"; sym"qatUser"; ee [sym "type"; sym"qatUser"; sym"user"]];
         sym"qatUser";
         ee [sym "if"; b true; i 10];
         ]
     in
-    let res = eval_estmt exp in
+    let ev = make_evaluator () in
+    let res = eval_estmt ev exp in
     printf "result: %s\n" (str_of_evalret res)
 ;;
 

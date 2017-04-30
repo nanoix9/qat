@@ -119,13 +119,13 @@ and eval_def env opd =
 and eval_type env opd =
     let name, sup = match opd with
         | [Atom (Sym name)] -> name, obj_o
-        | Atom (Sym name)::Atom (Sym "isa")::Atom (Sym sup_name)::[] ->
+        | Atom (Sym name)::Atom (Sym sup_name)::[] ->
                 name, (Env.get env sup_name)
         | _ -> raise EvalErr
     in
     let fname = make_fullname name (get_ns env) in
     let t = make_type fname sup in
-    Env.set env name t;
+    (*Env.set env name t;*)
     EvalVal t
 and eval_func env opd =
     EvalNone
@@ -143,11 +143,17 @@ and eval_apply opr opd =
     EvalNone
 ;;
 
-let global_env = make_env "__main__" None;;
+type evaluator = {global_env :env};;
 
-let eval_estmt e = eval_rec global_env e;;
-
-let evaluate ast =
-    eval_rec global_env (pre_eval ast)
+let make_evaluator () =
+    {global_env=make_env "__main__" None}
 ;;
+
+let eval_estmt evaluator e =
+    eval_rec evaluator.global_env e;;
+
+let evaluate evaluator ast =
+    eval_rec evaluator.global_env (pre_eval ast)
+;;
+
 
