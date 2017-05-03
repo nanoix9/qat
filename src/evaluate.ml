@@ -71,7 +71,7 @@ and eval_list (env :env) (el :estmt list) :evalret =
         | "func" -> eval_func env opd
         | "return" -> eval_return env opd
         | "scope" -> eval_scope env opd
-        | _ -> eval_apply opr opd
+        | _ -> eval_apply env opr opd
     )
     | _ -> raise EvalErr
     (*| opr::opd -> eval_list env ((eval_rec env opr)::opd)*)
@@ -139,7 +139,15 @@ and eval_scope env opd =
         | [stmt] -> "", stmt
     in
     eval_rec (make_sub_env name env) stmt
-and eval_apply opr opd =
+and eval_apply env opr opd =
+    let f e = match eval_rec env e with
+        | EvalVal v -> v
+        | _ -> raise EvalErr
+    in
+    let func = Env.get env opr in
+    let args = List.map f opd in
+    let types = List.map (fun a -> a.t) args in
+    let func_impl = Env.get_func_impl func in
     EvalNone
 ;;
 

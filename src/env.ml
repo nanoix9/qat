@@ -1,8 +1,18 @@
+open Ast
+
 type sym = string
 type fullname = string list
 
-type q_type = {name: fullname; super: q_obj option}
+type env = {dict: (sym, q_obj) Hashtbl.t;
+    outer: env option;
+    ns: fullname}
 and q_obj = {mutable t: q_obj; mutable v: value}
+and q_type = {name: fullname; super: q_obj option}
+and func_impl = {params: (q_obj * sym) list; env :env; body :ast}
+and impl_tbl =
+    | FuncTbl of (fullname, impl_tbl) Hashtbl.t
+    | FuncImpl of func_impl
+and closure = {name: fullname; impls :impl_tbl}
 and value =
     | ValNil
     | ValInt of int
@@ -12,7 +22,7 @@ and value =
     | ValArr of q_obj array
     | ValDict of (q_obj, q_obj) Hashtbl.t
     | ValType of q_type
-    (*| ValClosure of closure*)
+    | ValClosure of closure
 ;;
 
 let rec eq_q_obj o1 o2 :bool =
@@ -33,10 +43,6 @@ and eq_value v1 v2 :bool =
     (*| ValArr a1, ValArr a2 -> *)
     | ValType t1, ValType t2 -> eq_q_type t1 t2
 ;;
-
-type env = {dict: (sym, q_obj) Hashtbl.t;
-    outer: env option;
-    ns: fullname}
 
 let name_root = [];;
 
@@ -87,3 +93,40 @@ let mem env sym :bool =
 let get_ns env :fullname =
     env.ns
 ;;
+
+let make_func name =
+    {name=name; impls=FuncTbl (Hashtbl.create 100)}
+;;
+
+let make_func_impl params body env =
+    {params=params; env=env; body=body}
+;;
+
+let rec get_impl_tbl impls types :func_impl option =
+    match impls, types with
+    | Some (FuncTbl tbl), tp::ts -> get_impl_with_supers tbl tp ts
+    | Some (FuncImpl imp), [] -> Some imp
+    | _ -> None
+and get_impl_with_supers tbl tp ts :func_impl option =
+    let name, super = match tp.v with
+        | ValType v -> v.name, v.super
+    in
+    let imp = if Hashtbl.mem tbl name then
+            get_impl_tbl (Some (Hashtbl.find tbl name)) ts
+        else
+            None
+    in
+    match imp with
+    | None ->
+        (match super with
+        | None -> None
+        | Some sup -> get_impl_with_supers tbl sup ts)
+    | _ -> imp
+;;
+
+let get_func_impl func param_types =
+    get_impl_tbl (Some func.impls) param_types
+;;
+
+(*let add_impl_to_func func impl =*)
+    (*func.impls*)
