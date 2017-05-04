@@ -190,6 +190,39 @@ let print_graph () =
     (*printf "%s\n" (get_content plt.canvas)*)
 ;;
 
+(*================ Env =================*)
+let test_func () =
+    let func = make_func ["foo"] in
+    let params = [ (int_t, "x"); (int_t, "y") ] in
+    let params2 = [ (str_t, "s"); (bool_t, "b") ] in
+    let params3 = [ (int_t, "a"); (int_t, "b"); (bool_t, "c") ] in
+    let body = Atom (Imm (Int 10)) in
+    let env = make_env "main" None in
+    let fimpl = make_func_impl ["fooimpl"] params body env in
+    let fimpl2 = make_func_impl ["fooimpl2"] params2 body env in
+    let fimpl3 = make_func_impl ["fooimpl3"] params3 body env in
+    printf "%s\n" (str_of_func_impl fimpl);
+    add_impl_to_func func fimpl2;
+    (*printf "%s\n" (str_of_func func);*)
+    add_impl_to_func func fimpl;
+    add_impl_to_func func fimpl3;
+    printf "%s\n" (str_of_func func);
+    let params = [make_int 1; make_int 2] in
+    let f params =
+        let impl = get_func_impl_for_params func params in
+        (match impl with
+        | Some i -> printf "Found:\n%s\n" (str_of_func_impl i)
+        | None -> printf "Not found\n")
+    in
+    f params;
+    f [make_int 1; make_int 2; make_int 3];
+    f [make_int 1; make_int 2; make_bool true];
+;;
+
+let env_main () =
+    test_func ()
+;;
+
 (*================ Evaluate =================*)
 let ee lst :estmt = NodeList lst;;
 let sym s :estmt = Atom (Sym s);;
@@ -227,7 +260,9 @@ let main () =
 
     (*macro_main ()*)
 
-    eval_main ()
+    env_main ()
+
+    (*eval_main ()*)
 
     (*print_graph ()*)
 ;;

@@ -1,5 +1,7 @@
 open Ast
 
+exception EnvErr of string;;
+
 type sym = string
 type fullname = string list
 
@@ -8,10 +10,12 @@ type env = {dict: (sym, q_obj) Hashtbl.t;
     ns: fullname}
 and q_obj = {mutable t: q_obj; mutable v: value}
 and q_type = {name: fullname; super: q_obj option}
-and func_impl = {params: (q_obj * sym) list; env :env; body :ast}
-and impl_tbl =
-    | FuncTbl of (fullname, impl_tbl) Hashtbl.t
-    | FuncImpl of func_impl
+and func_impl = {name: fullname;
+    params: (q_obj * sym) list;
+    env :env;
+    body :ast}
+and impl_tbl = {tbl :(fullname, impl_tbl) Hashtbl.t;
+    mutable impl :func_impl option}
 and closure = {name: fullname; impls :impl_tbl}
 and value =
     | ValNil
@@ -94,25 +98,31 @@ let get_ns env :fullname =
     env.ns
 ;;
 
-let make_func name =
-    {name=name; impls=FuncTbl (Hashtbl.create 100)}
+let make_impl_tbl impl =
+    {tbl=(Hashtbl.create 100); impl=impl}
 ;;
 
-let make_func_impl params body env =
-    {params=params; env=env; body=body}
+let make_func name =
+    {name=name; impls=make_impl_tbl None}
+;;
+
+let make_func_impl name params body env =
+    {name=name; params=params; env=env; body=body}
 ;;
 
 let rec get_impl_tbl impls types :func_impl option =
-    match impls, types with
-    | Some (FuncTbl tbl), tp::ts -> get_impl_with_supers tbl tp ts
-    | Some (FuncImpl imp), [] -> Some imp
+    match types with
+    | tp::ts -> get_impl_with_supers impls.tbl tp ts
+    | [] -> (match impls.impl with
+        | Some imp -> Some imp
+        | None -> None)
     | _ -> None
 and get_impl_with_supers tbl tp ts :func_impl option =
     let name, super = match tp.v with
         | ValType v -> v.name, v.super
     in
     let imp = if Hashtbl.mem tbl name then
-            get_impl_tbl (Some (Hashtbl.find tbl name)) ts
+            get_impl_tbl (Hashtbl.find tbl name) ts
         else
             None
     in
@@ -125,8 +135,65 @@ and get_impl_with_supers tbl tp ts :func_impl option =
 ;;
 
 let get_func_impl func param_types =
-    get_impl_tbl (Some func.impls) param_types
+    (*match func.v with*)
+    (*| ValClosure f -> *)
+    (*| _ -> None*)
+    get_impl_tbl func.impls param_types
 ;;
 
-(*let add_impl_to_func func impl =*)
-    (*func.impls*)
+let get_func_impl_for_params func params =
+    let types = List.map (fun p -> p.t) params in
+    get_func_impl func types
+;;
+
+let add_impl_to_func func impl :unit =
+    let rec add_impl_to_func_helper impls names :unit =
+        match names with
+        | tp::ts -> let tbl =
+            if Hashtbl.mem impls.tbl tp then
+                Hashtbl.find impls.tbl tp
+            else begin
+                let tbl = make_impl_tbl None in
+                Hashtbl.add impls.tbl tp tbl;
+                tbl
+            end
+            in
+            add_impl_to_func_helper tbl ts
+        | [] when impls.impl = None -> impls.impl <- Some impl
+        | _ -> raise (EnvErr "Exist")
+    in
+    let param_type_names = List.map
+        (fun (x, s) -> match x.v with | ValType v -> v.name)
+        impl.params
+    in
+    try
+        add_impl_to_func_helper func.impls param_type_names
+    with EnvErr "Exist" ->
+        raise (EnvErr ("function already has an implementation at ("
+            ^ (String.concat ", " (List.map str_of_fullname param_type_names))
+            ^ ")"))
+;;
+
+let str_of_func_impl (impl :func_impl) :string =
+    str_of_fullname impl.name ^ "\n    " ^
+    String.concat "\n    " (List.map
+        (fun (tp, s) -> let name = match tp.v with
+                | ValType t -> t.name
+            in
+            s ^ ": " ^ (str_of_fullname name))
+        impl.params)
+;;
+
+let str_of_func (func :closure) :string =
+    let rec helper impls prefix :string list =
+        Printf.printf "%s\n" (str_of_fullname prefix);
+        let curr = match impls.impl with
+            | Some impl -> [str_of_func_impl impl]
+            | None -> []
+        in
+        Hashtbl.fold (fun k v acc -> acc @ (helper v k)) impls.tbl curr
+    in
+    str_of_fullname func.name ^ "\n  " ^
+    String.concat "\n  " (helper func.impls [])
+;;
+

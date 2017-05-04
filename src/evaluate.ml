@@ -147,7 +147,7 @@ and eval_apply env opr opd =
     let func = Env.get env opr in
     let args = List.map f opd in
     let types = List.map (fun a -> a.t) args in
-    let func_impl = Env.get_func_impl func in
+    (*let func_impl = Env.get_func_impl func types in*)
     EvalNone
 ;;
 
