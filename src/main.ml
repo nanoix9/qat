@@ -196,7 +196,7 @@ let test_func () =
     let params = [ (int_t, "x"); (int_t, "y") ] in
     let params2 = [ (str_t, "s"); (bool_t, "b") ] in
     let params3 = [ (int_t, "a"); (int_t, "b"); (bool_t, "c") ] in
-    let body = Atom (Imm (Int 10)) in
+    let body = FuncBodyEstmt (Atom (Obj (make_int 10))) in
     let env = make_env "main" None in
     let fimpl = make_func_impl ["fooimpl"] params body env in
     let fimpl2 = make_func_impl ["fooimpl2"] params2 body env in
@@ -233,13 +233,14 @@ let b x :estmt = Atom (Obj (make_bool x));;
 let test_eval () =
     (*let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in*)
     let exp = ee [ sym "do";
-        (*ee [sym "def"; sym "x"; i 10];*)
-        ee [sym "def"; sym "x"; s "Hello World!"];
+        ee [sym "def"; sym "x"; i 10];
+        (*ee [sym "def"; sym "x"; s "Hello World!"];*)
         (*sym "x";*)
         ee [sym"def"; sym"user"; ee [sym "type"; sym"user"]];
         ee [sym"def"; sym"qatUser"; ee [sym "type"; sym"qatUser"; sym"user"]];
         sym"qatUser";
         ee [sym "if"; b true; i 10];
+        ee [sym"+"; sym"x"; i 15];
         ]
     in
     let ev = make_evaluator () in
@@ -260,9 +261,9 @@ let main () =
 
     (*macro_main ()*)
 
-    env_main ()
+    (*env_main ()*)
 
-    (*eval_main ()*)
+    eval_main ()
 
     (*print_graph ()*)
 ;;

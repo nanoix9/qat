@@ -13,10 +13,14 @@ and q_type = {name: fullname; super: q_obj option}
 and func_impl = {name: fullname;
     params: (q_obj * sym) list;
     env :env;
-    body :ast}
+    body :func_body}
+and func_body =
+    | FuncBodyEstmt of estmt
+    | FuncBodyInst of (q_obj list -> q_obj)
 and impl_tbl = {tbl :(fullname, impl_tbl) Hashtbl.t;
     mutable impl :func_impl option}
 and closure = {name: fullname; impls :impl_tbl}
+(*TODO: can the type `value` be simplified, i.e. less number of types of values?*)
 and value =
     | ValNil
     | ValInt of int
@@ -27,6 +31,17 @@ and value =
     | ValDict of (q_obj, q_obj) Hashtbl.t
     | ValType of q_type
     | ValClosure of closure
+    | ValScope of env
+and eatom =
+    | Sym of sym
+    | Obj of q_obj
+and estmt = eatom abs_tree
+;;
+
+let obj_to_int (j :q_obj) :int =
+    match j.v with
+    | ValInt i -> i
+    | _ -> raise (EnvErr "not a int")
 ;;
 
 let rec eq_q_obj o1 o2 :bool =
@@ -66,6 +81,10 @@ let get_fullname ns =
     ns
 ;;
 
+let get_basename n =
+    List.hd n
+;;
+
 let str_of_fullname nm :string =
     String.concat "." (List.rev nm)
 ;;
@@ -94,6 +113,10 @@ let mem env sym :bool =
     Hashtbl.mem env.dict sym
 ;;
 
+let iter f env :unit =
+    Hashtbl.fold (fun k v acc -> f k v) env.dict ()
+;;
+
 let get_ns env :fullname =
     env.ns
 ;;
@@ -110,6 +133,11 @@ let make_func_impl name params body env =
     {name=name; params=params; env=env; body=body}
 ;;
 
+let get_val_type tp_o :q_type =
+    match tp_o.v with
+    | ValType t -> t
+;;
+
 let rec get_impl_tbl impls types :func_impl option =
     match types with
     | tp::ts -> get_impl_with_supers impls.tbl tp ts
@@ -117,18 +145,16 @@ let rec get_impl_tbl impls types :func_impl option =
         | Some imp -> Some imp
         | None -> None)
     | _ -> None
-and get_impl_with_supers tbl tp ts :func_impl option =
-    let name, super = match tp.v with
-        | ValType v -> v.name, v.super
-    in
-    let imp = if Hashtbl.mem tbl name then
-            get_impl_tbl (Hashtbl.find tbl name) ts
+and get_impl_with_supers tbl tp_o ts :func_impl option =
+    let tp = get_val_type tp_o in
+    let imp = if Hashtbl.mem tbl tp.name then
+            get_impl_tbl (Hashtbl.find tbl tp.name) ts
         else
             None
     in
     match imp with
     | None ->
-        (match super with
+        (match tp.super with
         | None -> None
         | Some sup -> get_impl_with_supers tbl sup ts)
     | _ -> imp
@@ -186,7 +212,7 @@ let str_of_func_impl (impl :func_impl) :string =
 
 let str_of_func (func :closure) :string =
     let rec helper impls prefix :string list =
-        Printf.printf "%s\n" (str_of_fullname prefix);
+        (*Printf.printf "%s\n" (str_of_fullname prefix);*)
         let curr = match impls.impl with
             | Some impl -> [str_of_func_impl impl]
             | None -> []
