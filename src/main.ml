@@ -227,20 +227,27 @@ let env_main () =
 let ee lst :estmt = NodeList lst;;
 let sym s :estmt = Atom (Sym s);;
 let i n :estmt = Atom (Obj (make_int n));;
+let f n :estmt = Atom (Obj (make_float n));;
 let s t :estmt = Atom (Obj (make_str t));;
 let b x :estmt = Atom (Obj (make_bool x));;
 
 let test_eval () =
     (*let exp = e [id "foo"; op "+"; id "bar"; op "-"; i 10] in*)
+    let def = sym "def" in
+    let x = sym "x" in
+    let y = sym "y" in
+    let z = sym "z" in
     let exp = ee [ sym "do";
-        ee [sym "def"; sym "x"; i 10];
+        ee [def; sym "x"; i 10];
         (*ee [sym "def"; sym "x"; s "Hello World!"];*)
         (*sym "x";*)
-        ee [sym"def"; sym"user"; ee [sym "type"; sym"user"]];
-        ee [sym"def"; sym"qatUser"; ee [sym "type"; sym"qatUser"; sym"user"]];
+        ee [def; sym"user"; ee [sym "type"; sym"user"]];
+        ee [def; sym"qatUser"; ee [sym "type"; sym"qatUser"; sym"user"]];
         sym"qatUser";
         ee [sym "if"; b true; i 10];
-        ee [sym"+"; sym"x"; i 15];
+        ee [def; y; ee [sym"+"; sym"x"; i 15]];
+        ee [sym"+"; f 3.14; f 15.0];
+        ee [sym"*"; x; y];
         ]
     in
     let ev = make_evaluator () in
@@ -261,9 +268,9 @@ let main () =
 
     (*macro_main ()*)
 
-    (*env_main ()*)
+    (*env_main ();*)
 
-    eval_main ()
+    eval_main ();
 
     (*print_graph ()*)
 ;;

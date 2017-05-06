@@ -139,6 +139,7 @@ and eval_scope env opd =
     let name, stmt = match opd with
         | Atom (Sym name)::[stmt] -> name, stmt
         | [stmt] -> "", stmt
+        | _ -> raise (EvalErr "SCOPE: incorrect syntax")
     in
     eval_rec (make_sub_env name env) stmt
 and eval_apply env opr opd =
@@ -147,8 +148,8 @@ and eval_apply env opr opd =
     let types = List.map (fun a -> a.t) args in
     match get_func_impl_o func types with
     | None -> raise (EvalErr (Printf.sprintf
-        "APPLY: cannot find implementation for %s"
-        (str_of_value func.v)))
+        "APPLY: implementation for %s not found: %s"
+        (str_of_value func.v) (str_of_type_list types)))
     | Some impl -> (match impl.body with
         | FuncBodyEstmt stmt -> let sub_env =
             make_sub_env (get_basename impl.name) impl.env

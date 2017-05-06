@@ -28,14 +28,14 @@ let rec str_of_value (v :value) :string =
             in
             str_of_fullname t.name ^ sup_info
     | ValClosure c -> "function(" ^ str_of_fullname c.name ^ ")"
+    | _ -> "NOT SUPPORTED"
 ;;
 
 let str_of_obj (j :q_obj) :string =
     assert (j.t.t == type_o);
-    match j.t.v with
-    | ValType t ->
-            "OBJ(type=" ^ str_of_fullname t.name ^ ", value="
-            ^ str_of_value j.v ^ ")"
+    "OBJ(type=" ^ str_of_fullname (obj_to_type j.t).name
+        ^ ", value="
+        ^ str_of_value j.v ^ ")"
 ;;
 
 let nil = make_obj type_o ValNil
@@ -68,14 +68,12 @@ let make_func_o name =
 ;;
 
 let add_impl_to_func_o func_o impl :unit =
-    match func_o.v with
-    | ValClosure f -> add_impl_to_func f impl
+    add_impl_to_func (obj_to_closure func_o) impl
     (*| _ -> None*)
 ;;
 
 let get_func_impl_o func_o param_types =
-    match func_o.v with
-    | ValClosure f -> get_func_impl f param_types
+    get_func_impl (obj_to_closure func_o) param_types
 ;;
 
 let make_builtin_func name =
@@ -84,12 +82,72 @@ let make_builtin_func name =
 
 (*let _wrap_inst (f :q_obj list -> q_obj) :q_obj =*)
     (*let *)
-let op_add = let f = make_builtin_func "+" in
-    add_impl_to_func_o f (make_func_impl ["+"]
-        [(int_t, "_"); (int_t, "_")]
-        (FuncBodyInst (function
-            | a::b::[] -> make_int ((obj_to_int a) + (obj_to_int b))))
-        env_builtin);
+
+(*--------------- builtin functions -------------------*)
+let _add_builtin_func_impl func basename params inst :unit =
+    add_impl_to_func_o func (make_func_impl
+        (make_fullname basename builtin)
+        params
+        (FuncBodyInst inst)
+        env_builtin)
+;;
+
+let _make_binop_params tp = [(tp, "_"); (tp, "_")];;
+let _int2 = _make_binop_params int_t;;
+let _float2 = _make_binop_params float_t;;
+let _str2 = _make_binop_params str_t;;
+let _bool2 = _make_binop_params bool_t;;
+
+let _make_binop pack extract =
+    let ret f = function
+        | a::b::[] -> pack (f (extract a) (extract b))
+    in
+    ret
+;;
+
+let _binop_int = _make_binop make_int obj_to_int;;
+let _binop_float = _make_binop make_float obj_to_float;;
+let _binop_str = _make_binop make_str obj_to_str;;
+let _binop_bool = _make_binop make_bool obj_to_bool;;
+
+let _op_helper op =
+    let f = make_builtin_func op in
+    let add = _add_builtin_func_impl f op in
+    f, add
+;;
+
+let op_add =
+    let f, add = _op_helper "+" in
+    add _int2 (_binop_int (fun a b -> a + b));
+    add _float2 (_binop_float (fun a b -> a +. b));
+    add _str2 (_binop_str (fun a b -> a ^ b));
+    f
+;;
+
+let op_sub =
+    let f, add = _op_helper "-" in
+    add _int2 (_binop_int (fun a b -> a - b));
+    add _float2 (_binop_float (fun a b -> a -. b));
+    f
+;;
+
+let op_mul =
+    let f, add = _op_helper "*" in
+    add _int2 (_binop_int (fun a b -> a * b));
+    add _float2 (_binop_float (fun a b -> a *. b));
+    f
+;;
+
+let op_div =
+    let f, add = _op_helper "/" in
+    add _int2 (_binop_int (fun a b -> a / b));
+    add _float2 (_binop_float (fun a b -> a /. b));
+    f
+;;
+
+let op_mod =
+    let f, add = _op_helper "%" in
+    add _int2 (_binop_int (fun a b -> a mod b));
     f
 ;;
 
@@ -103,15 +161,12 @@ let make_module name env :q_obj =
 
 (*TODO: can we change import module to a function?*)
 let import_module env mdl =
-    let name = match mdl.v with
-    | ValScope e -> get_ns e
-    in
+    let name = get_ns (obj_to_scope mdl) in
     name
-
 ;;
 
-let module_builtin = let b = make_module_on_env env_builtin
-    in
+let module_builtin =
+    let b = make_module_on_env env_builtin in
     b
 ;;
 
@@ -135,5 +190,9 @@ _set_obj func_t;
 _set_obj module_t;
 
 _set_obj op_add;
+_set_obj op_sub;
+_set_obj op_mul;
+_set_obj op_div;
+_set_obj op_mod;
 ;;
 

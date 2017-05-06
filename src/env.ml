@@ -44,6 +44,42 @@ let obj_to_int (j :q_obj) :int =
     | _ -> raise (EnvErr "not a int")
 ;;
 
+let obj_to_float (j :q_obj) :float =
+    match j.v with
+    | ValFloat i -> i
+    | _ -> raise (EnvErr "not a float")
+;;
+
+let obj_to_str (j :q_obj) :string =
+    match j.v with
+    | ValStr i -> i
+    | _ -> raise (EnvErr "not a string")
+;;
+
+let obj_to_bool (j :q_obj) :bool =
+    match j.v with
+    | ValBool i -> i
+    | _ -> raise (EnvErr "not a bool")
+;;
+
+let obj_to_type (j :q_obj) :q_type =
+    match j.v with
+    | ValType i -> i
+    | _ -> raise (EnvErr "not a q_type")
+;;
+
+let obj_to_closure (j :q_obj) :closure =
+    match j.v with
+    | ValClosure i -> i
+    | _ -> raise (EnvErr "not a function")
+;;
+
+let obj_to_scope (j :q_obj) :env =
+    match j.v with
+    | ValScope i -> i
+    | _ -> raise (EnvErr "not a scope")
+;;
+
 let rec eq_q_obj o1 o2 :bool =
     o1.t == o2.t && eq_value o1.v o2.v
 and eq_q_type t1 t2 :bool =
@@ -61,6 +97,7 @@ and eq_value v1 v2 :bool =
     | ValBool b1, ValBool b2 -> b1 = b2
     (*| ValArr a1, ValArr a2 -> *)
     | ValType t1, ValType t2 -> eq_q_type t1 t2
+    | _ -> false
 ;;
 
 let name_root = [];;
@@ -83,6 +120,10 @@ let get_fullname ns =
 
 let get_basename n =
     List.hd n
+;;
+
+let get_parent_name n =
+    List.tl n
 ;;
 
 let str_of_fullname nm :string =
@@ -129,13 +170,26 @@ let make_func name =
     {name=name; impls=make_impl_tbl None}
 ;;
 
-let make_func_impl name params body env =
-    {name=name; params=params; env=env; body=body}
+let str_of_type_list types :string =
+    let names = String.concat "," (List.map
+        (fun tp ->
+            let name = (obj_to_type tp).name in
+            str_of_fullname name)
+        types)
+    in
+    "(" ^ names ^ ")"
 ;;
 
-let get_val_type tp_o :q_type =
-    match tp_o.v with
-    | ValType t -> t
+let make_func_impl name params body env =
+    let type_names = str_of_type_list (List.map
+        (fun (tp, s) -> tp)
+        params)
+    in
+    let name_with_types = make_fullname
+        (get_basename name ^ type_names)
+        (get_parent_name name)
+    in
+    {name=name_with_types; params=params; env=env; body=body}
 ;;
 
 let rec get_impl_tbl impls types :func_impl option =
@@ -146,7 +200,7 @@ let rec get_impl_tbl impls types :func_impl option =
         | None -> None)
     | _ -> None
 and get_impl_with_supers tbl tp_o ts :func_impl option =
-    let tp = get_val_type tp_o in
+    let tp = obj_to_type tp_o in
     let imp = if Hashtbl.mem tbl tp.name then
             get_impl_tbl (Hashtbl.find tbl tp.name) ts
         else
@@ -189,7 +243,7 @@ let add_impl_to_func func impl :unit =
         | _ -> raise (EnvErr "Exist")
     in
     let param_type_names = List.map
-        (fun (x, s) -> match x.v with | ValType v -> v.name)
+        (fun (x, s) -> (obj_to_type x).name)
         impl.params
     in
     try
@@ -203,9 +257,7 @@ let add_impl_to_func func impl :unit =
 let str_of_func_impl (impl :func_impl) :string =
     str_of_fullname impl.name ^ "\n    " ^
     String.concat "\n    " (List.map
-        (fun (tp, s) -> let name = match tp.v with
-                | ValType t -> t.name
-            in
+        (fun (tp, s) -> let name = (obj_to_type tp).name in
             s ^ ": " ^ (str_of_fullname name))
         impl.params)
 ;;
