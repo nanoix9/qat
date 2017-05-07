@@ -14,9 +14,10 @@ Library qat
   InternalModules: Parse, Expand
   BuildDepends: str, extlib, core, ocamlgraph
 
-Executable qat
+Executable qati
   Path:       src
-  MainIs:     qatc.ml
+  MainIs:     qati.ml
+  BuildDepends: qat
 
 Executable main
   Path:       src
