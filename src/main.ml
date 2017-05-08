@@ -247,7 +247,7 @@ let test_eval () =
         ee [sym "if"; b true; i 10];
         ee [def; y; ee [sym"+"; sym"x"; i 15]];
         ee [sym"+"; f 3.14; f 15.0];
-        ee [sym"*"; x; y];
+        ee [sym"show"; ee [sym"*"; x; y]];
         ]
     in
     let ev = make_evaluator () in

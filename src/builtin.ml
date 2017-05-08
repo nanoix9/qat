@@ -92,11 +92,24 @@ let _add_builtin_func_impl func basename params inst :unit =
         env_builtin)
 ;;
 
+let _make_unop_params tp = [(tp, "_")];;
+let _int1 = _make_unop_params int_t;;
+let _float1 = _make_unop_params float_t;;
+let _str1 = _make_unop_params str_t;;
+let _bool1 = _make_unop_params bool_t;;
+
 let _make_binop_params tp = [(tp, "_"); (tp, "_")];;
 let _int2 = _make_binop_params int_t;;
 let _float2 = _make_binop_params float_t;;
 let _str2 = _make_binop_params str_t;;
 let _bool2 = _make_binop_params bool_t;;
+
+let _make_unop pack extract =
+    let ret f = function
+        | a::[] -> pack (f (extract a))
+    in
+    ret
+;;
 
 let _make_binop pack extract =
     let ret f = function
@@ -104,6 +117,13 @@ let _make_binop pack extract =
     in
     ret
 ;;
+
+let _unop_ret_str extract = _make_unop make_str extract;;
+
+let _unop_int = _make_unop make_int obj_to_int;;
+let _unop_float = _make_unop make_float obj_to_float;;
+let _unop_str = _make_unop make_str obj_to_str;;
+let _unop_bool = _make_unop make_bool obj_to_bool;;
 
 let _binop_int = _make_binop make_int obj_to_int;;
 let _binop_float = _make_binop make_float obj_to_float;;
@@ -114,6 +134,15 @@ let _op_helper op =
     let f = make_builtin_func op in
     let add = _add_builtin_func_impl f op in
     f, add
+;;
+
+let show =
+    let f, add = _op_helper "show" in
+    add _int1 (_unop_ret_str obj_to_int (fun a -> string_of_int a));
+    add _float1 (_unop_ret_str obj_to_float (fun a -> string_of_float a));
+    add _str1 (_unop_ret_str obj_to_str (fun a -> a));
+    add _bool1 (_unop_ret_str obj_to_bool (fun a -> string_of_bool a));
+    f
 ;;
 
 let op_add =
@@ -188,6 +217,8 @@ _set_obj str_t;
 _set_obj bool_t;
 _set_obj func_t;
 _set_obj module_t;
+
+_set_obj show;
 
 _set_obj op_add;
 _set_obj op_sub;
