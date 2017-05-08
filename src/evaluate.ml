@@ -178,6 +178,7 @@ type evaluator = {global_env :env};;
 let make_evaluator () =
     let ev = {global_env=make_env "__main__" None} in
     import_all ev.global_env module_builtin;
+    import_all ev.global_env Io.module_io;
     ev
 ;;
 

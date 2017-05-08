@@ -84,13 +84,22 @@ let make_builtin_func name =
     (*let *)
 
 (*--------------- builtin functions -------------------*)
-let _add_builtin_func_impl func basename params inst :unit =
-    add_impl_to_func_o func (make_func_impl
-        (make_fullname basename builtin)
-        params
-        (FuncBodyInst inst)
-        env_builtin)
+let make_func_impl_adder module_name env =
+    let f func basename params inst :unit =
+        add_impl_to_func_o func (make_func_impl
+            (make_fullname basename module_name)
+            params
+            (FuncBodyInst inst)
+            env)
+    in
+    f
 ;;
+
+let make_params types :(q_obj * sym) list =
+    List.map (fun tp -> (tp, "_")) types
+;;
+
+let _add_builtin_func_impl = make_func_impl_adder builtin env_builtin;;
 
 let _make_unop_params tp = [(tp, "_")];;
 let _int1 = _make_unop_params int_t;;
@@ -103,6 +112,13 @@ let _int2 = _make_binop_params int_t;;
 let _float2 = _make_binop_params float_t;;
 let _str2 = _make_binop_params str_t;;
 let _bool2 = _make_binop_params bool_t;;
+
+let _make_un_cmd extract =
+    let ret f = function
+        | a::[] -> f (extract a)
+    in
+    ret
+;;
 
 let _make_unop pack extract =
     let ret f = function
@@ -199,14 +215,15 @@ let module_builtin =
     b
 ;;
 
-let _set = Env.set env_builtin in
-let _set_obj j =
-    let name = match j.v with
+let add_obj_to_env env obj =
+    let name = match obj.v with
     | ValType t -> get_basename t.name
     | ValClosure c -> get_basename c.name
     in
-    _set name j
-in
+    Env.set env name obj
+;;
+
+let _set_obj j = add_obj_to_env env_builtin j in
 _set_obj obj_o;
 _set_obj type_o;
 
