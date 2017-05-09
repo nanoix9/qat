@@ -84,7 +84,7 @@ let make_builtin_func name =
     (*let *)
 
 (*--------------- builtin functions -------------------*)
-let make_func_impl_adder module_name env =
+let make_func_impl_inst_adder module_name env =
     let f func basename params inst :unit =
         add_impl_to_func_o func (make_func_impl
             (make_fullname basename module_name)
@@ -95,11 +95,22 @@ let make_func_impl_adder module_name env =
     f
 ;;
 
+let make_func_impl_estmt_adder module_name env =
+    let f func basename params inst :unit =
+        add_impl_to_func_o func (make_func_impl
+            (make_fullname basename module_name)
+            params
+            (FuncBodyEstmt inst)
+            env)
+    in
+    f
+;;
+
 let make_params types :(q_obj * sym) list =
     List.map (fun tp -> (tp, "_")) types
 ;;
 
-let _add_builtin_func_impl = make_func_impl_adder builtin env_builtin;;
+let _add_builtin_func_impl = make_func_impl_inst_adder builtin env_builtin;;
 
 let _make_unop_params tp = [(tp, "_")];;
 let _int1 = _make_unop_params int_t;;
@@ -114,10 +125,10 @@ let _str2 = _make_binop_params str_t;;
 let _bool2 = _make_binop_params bool_t;;
 
 let _make_un_cmd extract =
-    let ret f = function
-        | a::[] -> f (extract a)
+    let cmd f = function
+        | a::[] -> f (extract a); nil
     in
-    ret
+    cmd
 ;;
 
 let _make_unop pack extract =
@@ -208,6 +219,15 @@ let make_module name env :q_obj =
 let import_module env mdl =
     let name = get_ns (obj_to_scope mdl) in
     name
+;;
+
+let import_all env mdl =
+    let mdl_env = match mdl.v with
+        | ValScope e -> e
+        (*| _ -> raise (EvalErr "only imports a module")*)
+    in
+    let f k v = (*Printf.printf "set %s\n" k;*) Env.set env k v in
+    Env.iter f mdl_env
 ;;
 
 let module_builtin =

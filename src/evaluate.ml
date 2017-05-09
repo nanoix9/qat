@@ -54,9 +54,12 @@ let rec eval_rec (env :env) (ee :estmt) :evalret =
     | Atom t -> eval_atom env t
     | NodeList el -> eval_list env el
 and eval_atom (env :env) (atom :eatom) :evalret =
+    (*let _ = Printf.printf "========\n"; Env.iter (fun k v -> Printf.printf "%s\n" k) env in*)
     let o = match atom with
-        | Sym s -> if Env.mem env s then Env.get env s
-                else raise (EvalErr (Printf.sprintf "undefined symbol: %s" s))
+        | Sym s ->
+            (try Env.get_deep env s
+            with Not_found ->
+                raise (EvalErr (Printf.sprintf "undefined symbol: %s" s)))
         | Obj o -> o
     in
     EvalVal o
@@ -122,7 +125,7 @@ and eval_type env opd =
     let name, sup = match opd with
         | [Atom (Sym name)] -> name, obj_o
         | Atom (Sym name)::Atom (Sym sup_name)::[] ->
-                name, (Env.get env sup_name)
+                name, (Env.get_deep env sup_name)
         | _ -> raise (EvalErr "TYPE: incorrect syntax")
     in
     let fname = make_fullname name (get_ns env) in
@@ -161,16 +164,8 @@ and eval_apply env opr opd =
             eval_rec sub_env stmt
         | FuncBodyInst inst -> EvalVal (inst args))
 and eval_to_obj env stmt =
+    (*let _ = Printf.printf "====\n"; Env.iter (fun k v -> Printf.printf "%s\n" k) env in*)
     get_obj_from_evalret (eval_rec env stmt)
-;;
-
-let import_all env mdl =
-    let mdl_env = match mdl.v with
-        | ValScope e -> e
-        | _ -> raise (EvalErr "only imports a module")
-    in
-    let f k v = Env.set env k v in
-    Env.iter f mdl_env
 ;;
 
 type evaluator = {global_env :env};;

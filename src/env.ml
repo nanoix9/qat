@@ -146,16 +146,32 @@ let set env sym q_obj :unit =
     Hashtbl.replace env.dict sym q_obj
 ;;
 
-let get env sym :q_obj =
-    Hashtbl.find env.dict sym
-;;
-
 let mem env sym :bool =
     Hashtbl.mem env.dict sym
 ;;
 
+let get env sym :q_obj =
+    Hashtbl.find env.dict sym
+;;
+
+let rec get_deep env sym :q_obj =
+    if mem env sym then
+        get env sym
+    else
+        match env.outer with
+        | None -> raise Not_found
+        | Some e -> get e sym
+;;
+
 let iter f env :unit =
     Hashtbl.fold (fun k v acc -> f k v) env.dict ()
+;;
+
+let rec iter_deep f env :unit =
+    let _ = iter f env in
+    match env.outer with
+    | None -> ()
+    | Some e -> iter_deep f e
 ;;
 
 let get_ns env :fullname =
