@@ -1,0 +1,4 @@
+func pn (x) (println (show x));
+
+def x 10;
+pn (if (> x 5) 10 20);

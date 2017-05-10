@@ -1,3 +1,15 @@
+func pn (x) (println (show x));
 def x 10;
-println (show (+ x 2));
+def y 6;
+pn (+ x 2);
+pn (- x y);
+pn (* x y);
+pn (/ x y);
+pn (% x y);
+def p 3.14;
+def e 2.718;
+pn (+ p e);
+pn (- e p);
+pn (* p e);
+pn (/ e p);
 

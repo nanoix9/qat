@@ -179,31 +179,111 @@ let op_add =
     add _str2 (_binop_str (fun a b -> a ^ b));
     f
 ;;
-
 let op_sub =
     let f, add = _op_helper "-" in
+    add _int1 (_unop_int (fun a -> ~- a));
+    add _float1 (_unop_float (fun a -> ~-. a));
     add _int2 (_binop_int (fun a b -> a - b));
     add _float2 (_binop_float (fun a b -> a -. b));
     f
 ;;
-
 let op_mul =
     let f, add = _op_helper "*" in
     add _int2 (_binop_int (fun a b -> a * b));
     add _float2 (_binop_float (fun a b -> a *. b));
     f
 ;;
-
 let op_div =
     let f, add = _op_helper "/" in
     add _int2 (_binop_int (fun a b -> a / b));
     add _float2 (_binop_float (fun a b -> a /. b));
     f
 ;;
-
 let op_mod =
     let f, add = _op_helper "%" in
     add _int2 (_binop_int (fun a b -> a mod b));
+    f
+;;
+
+let _cmp_int = _make_binop make_bool obj_to_int;;
+let _cmp_float = _make_binop make_bool obj_to_float;;
+let _cmp_str = _make_binop make_bool obj_to_str;;
+
+let op_eq =
+    let f, add = _op_helper "==" in
+    add _int2 (_cmp_int (fun a b -> a = b));
+    add _float2 (_cmp_float (fun a b -> a = b));
+    add _bool2 (_binop_bool (fun a b -> a = b));
+    add _str2 (_cmp_str (fun a b -> a = b));
+    f
+;;
+let op_neq =
+    let f, add = _op_helper "!=" in
+    add _int2 (_cmp_int (fun a b -> a <> b));
+    add _float2 (_cmp_float (fun a b -> a <> b));
+    add _bool2 (_binop_bool (fun a b -> a <> b));
+    add _str2 (_cmp_str (fun a b -> a <> b));
+    f
+;;
+let op_gt =
+    let f, add = _op_helper ">" in
+    add _int2 (_cmp_int (fun a b -> a > b));
+    add _float2 (_cmp_float (fun a b -> a > b));
+    add _str2 (_cmp_str (fun a b -> a > b));
+    f
+;;
+let op_lt =
+    let f, add = _op_helper "<" in
+    add _int2 (_cmp_int (fun a b -> a < b));
+    add _float2 (_cmp_float (fun a b -> a < b));
+    add _str2 (_cmp_str (fun a b -> a < b));
+    f
+;;
+
+let op_and =
+    let f, add = _op_helper "&&" in
+    add _bool2 (_binop_bool (fun a b -> a && b));
+    f
+;;
+let op_or =
+    let f, add = _op_helper "||" in
+    add _bool2 (_binop_bool (fun a b -> a || b));
+    f
+;;
+let op_not =
+    let f, add = _op_helper "!" in
+    add _bool1 (_unop_bool (fun a -> not a));
+    f
+;;
+
+let op_land =
+    let f, add = _op_helper "&" in
+    add _int2 (_binop_int (fun a b -> a land b));
+    f
+;;
+let op_lor =
+    let f, add = _op_helper "|" in
+    add _int2 (_binop_int (fun a b -> a lor b));
+    f
+;;
+let op_lnot =
+    let f, add = _op_helper "!" in
+    add _int1 (_unop_int (fun a -> lnot a));
+    f
+;;
+let op_lsl =
+    let f, add = _op_helper "<<" in
+    add _int2 (_binop_int (fun a b -> a lsl b));
+    f
+;;
+let op_asr =
+    let f, add = _op_helper ">>" in
+    add _int2 (_binop_int (fun a b -> a asr b));
+    f
+;;
+let op_lsr =
+    let f, add = _op_helper ">>>" in
+    add _int2 (_binop_int (fun a b -> a lsr b));
     f
 ;;
 
@@ -262,5 +342,21 @@ _set_obj op_sub;
 _set_obj op_mul;
 _set_obj op_div;
 _set_obj op_mod;
+
+_set_obj op_eq;
+_set_obj op_neq;
+_set_obj op_gt;
+_set_obj op_lt;
+
+_set_obj op_and;
+_set_obj op_or;
+_set_obj op_not;
+
+_set_obj op_land;
+_set_obj op_lor;
+_set_obj op_lnot;
+_set_obj op_lsl;
+_set_obj op_asr;
+_set_obj op_lsr;
 ;;
 

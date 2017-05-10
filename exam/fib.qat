@@ -1,0 +1,38 @@
+func pn (x) (println (show x));
+func fib_rec (n) (
+    if (|| (< n 0) (== n 0))
+        0
+        (if (|| (== n 1) (== n 2))
+            1
+            (+ (fib (- n 1)) (fib (- n 2)))
+        )
+    );
+
+func fib_iter (n f2 f1) (
+    if (|| (< n 0) (== n 0))
+        0
+        (if (== n 1)
+            f2
+            (if (== n 2)
+                f1
+                (fib_iter (- n 1) f1 (+ f2 f1))
+            )
+        )
+    );
+
+func fib (n) (fib_iter n 1 1);
+
+func pfib (i) (pn (+ (+ (show i) ":\t") (show (fib i))));
+
+pfib -1;
+pfib 0;
+pfib 1;
+pfib 2;
+pfib 3;
+pfib 4;
+pfib 5;
+pfib 6;
+pfib 7;
+pfib 8;
+pfib 9;
+

@@ -145,6 +145,8 @@ and eval_func env opd =
         in
         let params = List.map
             (function
+                | Atom (Sym p) | NodeList ((Atom (Sym p))::[]) ->
+                    (obj_o, p)
                 | NodeList ((Atom (Sym p))::(Atom (Sym tp))::[]) ->
                     (Env.get_deep env tp, p)
                 | _ -> raise (EvalErr "FUNC: incorrect parameter definition"))
