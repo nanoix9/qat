@@ -16,3 +16,9 @@ let run interp (code :string) :evalret =
         |> (expand interp.mmngr)
         |> (evaluate interp.evaluator)
 ;;
+
+let run_no_macro interp (code :string) :evalret =
+    code |> parse
+        |> (evaluate interp.evaluator)
+;;
+

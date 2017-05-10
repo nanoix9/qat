@@ -133,7 +133,27 @@ and eval_type env opd =
     (*Env.set env name t;*)
     EvalVal t
 and eval_func env opd =
-    EvalNone
+    let ns = (get_ns env) in
+    match opd with
+    | (Atom (Sym name))::(NodeList param_stmts)::body::[] ->
+        let f =
+            try Env.get_deep env name
+            with Not_found ->
+                let f = make_func_o (make_fullname name ns) in
+                Env.set env name f;
+                f
+        in
+        let params = List.map
+            (function
+                | NodeList ((Atom (Sym p))::(Atom (Sym tp))::[]) ->
+                    (Env.get_deep env tp, p)
+                | _ -> raise (EvalErr "FUNC: incorrect parameter definition"))
+            param_stmts
+        in
+        let _add = make_func_impl_estmt_adder ns env in
+        _add f name params body;
+        EvalNone
+    | _ -> raise (EvalErr "FUNC: incorrect syntax")
 and eval_return env opd =
     match opd with
     | [stmt] -> eval_rec env stmt

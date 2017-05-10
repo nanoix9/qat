@@ -20,7 +20,7 @@ let run_file fn =
         close_in ic
     in
     let code = "(" ^ (Util.join_da "\n" lines) ^ ")" in
-    let _ = run interp code in ()
+    let _ = run_no_macro interp code in ()
     (*let _ =  printf "%s\n" code in ()*)
 ;;
 

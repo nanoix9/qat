@@ -96,11 +96,11 @@ let make_func_impl_inst_adder module_name env =
 ;;
 
 let make_func_impl_estmt_adder module_name env =
-    let f func basename params inst :unit =
+    let f func basename params estmt :unit =
         add_impl_to_func_o func (make_func_impl
             (make_fullname basename module_name)
             params
-            (FuncBodyEstmt inst)
+            (FuncBodyEstmt estmt)
             env)
     in
     f

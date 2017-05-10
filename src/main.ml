@@ -247,7 +247,10 @@ let test_eval () =
         ee [sym "if"; b true; i 10];
         ee [def; y; ee [sym"+"; sym"x"; i 15]];
         ee [sym"+"; f 3.14; f 15.0];
+        ee [sym"func"; sym"pn"; ee [ee [sym"x"; sym"object"]];
+            ee [sym"println"; ee [sym"show"; sym"x"]]];
         ee [sym"println"; ee [sym"show"; ee [sym"*"; x; y]]];
+        ee [sym"pn"; ee [sym"/"; i 100; x]];
         ]
     in
     let ev = make_evaluator () in
