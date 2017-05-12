@@ -7,6 +7,7 @@ open Expand
 open Env
 open Evaluate
 open Builtin
+open Big_int
 
 (*=========== test parse ============*)
 let parse = Parse.parse;;
@@ -102,7 +103,7 @@ let mmngr =
 let e lst :ast = NodeList lst;;
 let id s :ast = Atom (Id s);;
 let op s :ast = Atom (Op s);;
-let i n :ast = Atom (Imm (Int n));;
+let i n :ast = Atom (Imm (Int (string_of_int n)));;
 
 let show_grammar () = Util.println (show_macro_manager mmngr);;
 
@@ -192,6 +193,7 @@ let print_graph () =
 
 (*================ Env =================*)
 let test_func () =
+    let make_int i = Builtin.make_int (big_int_of_int i) in
     let func = make_func ["foo"] in
     let params = [ (int_t, "x"); (int_t, "y") ] in
     let params2 = [ (str_t, "s"); (bool_t, "b") ] in
@@ -226,7 +228,7 @@ let env_main () =
 (*================ Evaluate =================*)
 let ee lst :estmt = NodeList lst;;
 let sym s :estmt = Atom (Sym s);;
-let i n :estmt = Atom (Obj (make_int n));;
+let i n :estmt = Atom (Obj (make_int (big_int_of_int n)));;
 let f n :estmt = Atom (Obj (make_float n));;
 let s t :estmt = Atom (Obj (make_str t));;
 let b x :estmt = Atom (Obj (make_bool x));;

@@ -2,6 +2,9 @@ open OUnit2
 open Ast
 open Parse
 
+let i n :ast = Atom (Imm (Int (string_of_int n)));;
+(*let b n :ast = Atom (Imm (Bool (string_of_bool n)));;*)
+
 let assert_parse c expect str =
     assert_equal ~ctxt:c ~printer:str_of_ast expect (parse str)
 ;;
@@ -29,7 +32,7 @@ let suite =
                 ls [Atom (Id "x"); Atom (Op "-");
                     Atom (Id "y"); Atom (Op "*"); Atom (Id "zz");
                     Atom (Op "%"); Atom (Id "u"); Atom (Op "<<");
-                    Atom (Imm (Int 2))]])
+                    i 2;]])
             "(x - y * zz % u << 2;)");
 
         "test_mixfix" >:: (fun c -> assert_parse c
@@ -47,7 +50,7 @@ let suite =
             (ls [Atom (Id "if"); Atom (Id "x");
                 Atom (Op "=="); Atom (Imm (Str_ "foo"));
                 ls [Atom (Id "if"); Atom (Id "bar");
-                    Atom (Op "=="); Atom (Imm (Int 2));
+                    Atom (Op "=="); i 2;
                     ls [Atom (Op "{}"); Atom (Id "do");
                         ls [Atom (Id "if"); Atom (Id "foobar");
                             Atom (Op "&&"); Atom (Id "barfoo");

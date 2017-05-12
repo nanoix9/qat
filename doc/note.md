@@ -18,3 +18,8 @@
 
 - `getattr` & `setattr` for module access, like `foo.bar` is `getattr foo bar`
 
+- implement `goto`
+
+- implement defining macro
+
+- print stack trace when exception occurs

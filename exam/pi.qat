@@ -1,0 +1,30 @@
+(do
+(func pn (x) (println (show x)))
+
+(func xor ((a int) (b int))
+    (|| (&& (< a 0) (> b 0)) (&& (> a 0) (< b 0))))
+
+(func floor_div ((a int) (b int)) (do
+    (def q (/ a b))
+    (if (xor a b) (return (- q 1)) (return q))))
+
+(func g (q r t1 k n l)
+    (if (< k 1000)
+        (if (< (- (+ (* 4 q) r) t1) (* n t1)) (do
+            (print (show n))
+            (g (* 10 q)
+               (* 10 (- r (* n t1)))
+               t1
+               k
+               (- (floor_div (* 10 (+ (* 3 q) r)) t1) (* 10 n))
+               l))
+            (g (* q k)
+               (* (+ (* 2 q) r) l)
+               (* t1 l)
+               (+ k 1)
+               (floor_div (+ (+ (* q (* 7 k)) 2) (* r l)) (* t1 l))
+               (+ l 2)))
+        (println "")))
+
+(g 1 0 1 1 3 3)
+)

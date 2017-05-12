@@ -1,4 +1,5 @@
 open Env
+open Big_int
 
 let env_builtin = make_env "builtin" None;;
 
@@ -18,7 +19,7 @@ let make_obj (t :q_obj) (v :value) :q_obj =
 let rec str_of_value (v :value) :string =
     match v with
     | ValNil -> "nil"
-    | ValInt i -> "int(" ^ string_of_int i ^ ")"
+    | ValInt i -> "int(" ^ string_of_big_int i ^ ")"
     | ValFloat f -> "float(" ^ string_of_float f ^ ")"
     | ValStr s -> "str(\"" ^ s ^ "\")"
     | ValBool b -> "bool(" ^ string_of_bool b ^ ")"
@@ -165,7 +166,7 @@ let _op_helper op =
 
 let show =
     let f, add = _op_helper "show" in
-    add _int1 (_unop_ret_str obj_to_int (fun a -> string_of_int a));
+    add _int1 (_unop_ret_str obj_to_int (fun a -> string_of_big_int a));
     add _float1 (_unop_ret_str obj_to_float (fun a -> string_of_float a));
     add _str1 (_unop_ret_str obj_to_str (fun a -> a));
     add _bool1 (_unop_ret_str obj_to_bool (fun a -> string_of_bool a));
@@ -174,34 +175,34 @@ let show =
 
 let op_add =
     let f, add = _op_helper "+" in
-    add _int2 (_binop_int (fun a b -> a + b));
+    add _int2 (_binop_int (fun a b -> add_big_int a b));
     add _float2 (_binop_float (fun a b -> a +. b));
     add _str2 (_binop_str (fun a b -> a ^ b));
     f
 ;;
 let op_sub =
     let f, add = _op_helper "-" in
-    add _int1 (_unop_int (fun a -> ~- a));
+    add _int1 (_unop_int (fun a -> minus_big_int a));
     add _float1 (_unop_float (fun a -> ~-. a));
-    add _int2 (_binop_int (fun a b -> a - b));
+    add _int2 (_binop_int (fun a b -> sub_big_int a b));
     add _float2 (_binop_float (fun a b -> a -. b));
     f
 ;;
 let op_mul =
     let f, add = _op_helper "*" in
-    add _int2 (_binop_int (fun a b -> a * b));
+    add _int2 (_binop_int (fun a b -> mult_big_int a b));
     add _float2 (_binop_float (fun a b -> a *. b));
     f
 ;;
 let op_div =
     let f, add = _op_helper "/" in
-    add _int2 (_binop_int (fun a b -> a / b));
+    add _int2 (_binop_int (fun a b -> div_big_int a b));
     add _float2 (_binop_float (fun a b -> a /. b));
     f
 ;;
 let op_mod =
     let f, add = _op_helper "%" in
-    add _int2 (_binop_int (fun a b -> a mod b));
+    add _int2 (_binop_int (fun a b -> mod_big_int a b));
     f
 ;;
 
@@ -211,7 +212,7 @@ let _cmp_str = _make_binop make_bool obj_to_str;;
 
 let op_eq =
     let f, add = _op_helper "==" in
-    add _int2 (_cmp_int (fun a b -> a = b));
+    add _int2 (_cmp_int (fun a b -> eq_big_int a b));
     add _float2 (_cmp_float (fun a b -> a = b));
     add _bool2 (_binop_bool (fun a b -> a = b));
     add _str2 (_cmp_str (fun a b -> a = b));
@@ -219,7 +220,7 @@ let op_eq =
 ;;
 let op_neq =
     let f, add = _op_helper "!=" in
-    add _int2 (_cmp_int (fun a b -> a <> b));
+    add _int2 (_cmp_int (fun a b -> not (eq_big_int a b)));
     add _float2 (_cmp_float (fun a b -> a <> b));
     add _bool2 (_binop_bool (fun a b -> a <> b));
     add _str2 (_cmp_str (fun a b -> a <> b));
@@ -227,14 +228,14 @@ let op_neq =
 ;;
 let op_gt =
     let f, add = _op_helper ">" in
-    add _int2 (_cmp_int (fun a b -> a > b));
+    add _int2 (_cmp_int (fun a b -> gt_big_int a b));
     add _float2 (_cmp_float (fun a b -> a > b));
     add _str2 (_cmp_str (fun a b -> a > b));
     f
 ;;
 let op_lt =
     let f, add = _op_helper "<" in
-    add _int2 (_cmp_int (fun a b -> a < b));
+    add _int2 (_cmp_int (fun a b -> (*Printf.printf "%d,%d\n" a b;*) lt_big_int a b));
     add _float2 (_cmp_float (fun a b -> a < b));
     add _str2 (_cmp_str (fun a b -> a < b));
     f
@@ -258,32 +259,32 @@ let op_not =
 
 let op_land =
     let f, add = _op_helper "&" in
-    add _int2 (_binop_int (fun a b -> a land b));
+    add _int2 (_binop_int (fun a b -> and_big_int a b));
     f
 ;;
 let op_lor =
     let f, add = _op_helper "|" in
-    add _int2 (_binop_int (fun a b -> a lor b));
+    add _int2 (_binop_int (fun a b -> or_big_int a b));
     f
 ;;
 let op_lnot =
     let f, add = _op_helper "!" in
-    add _int1 (_unop_int (fun a -> lnot a));
+    (*add _int1 (_unop_int (fun a -> lnot a));*)
     f
 ;;
 let op_lsl =
     let f, add = _op_helper "<<" in
-    add _int2 (_binop_int (fun a b -> a lsl b));
+    add _int2 (_binop_int (fun a b -> shift_left_big_int a (int_of_big_int b)));
     f
 ;;
 let op_asr =
     let f, add = _op_helper ">>" in
-    add _int2 (_binop_int (fun a b -> a asr b));
+    add _int2 (_binop_int (fun a b -> shift_right_big_int a (int_of_big_int b)));
     f
 ;;
 let op_lsr =
     let f, add = _op_helper ">>>" in
-    add _int2 (_binop_int (fun a b -> a lsr b));
+    (*add _int2 (_binop_int (fun a b -> a lsr b));*)
     f
 ;;
 

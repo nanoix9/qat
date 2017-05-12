@@ -5,7 +5,7 @@ cd $bin_dir
 qati=../qati.byte
 
 for file in $(ls *.qat); do
-    echo "executing file $file ..."
+    echo "executing $file ..."
     if $qati $file | diff - ${file/%.qat/.out}; then
         echo "PASSED"
     else

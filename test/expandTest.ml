@@ -53,7 +53,7 @@ let assert_expand c setup expect exp =
 let e lst :ast = NodeList lst;;
 let id s :ast = Atom (Id s);;
 let op s :ast = Atom (Op s);;
-let i n :ast = Atom (Imm (Int n));;
+let i n :ast = Atom (Imm (Int (string_of_int n)));;
 
 let lf_id s = Leaf (id s);;
 let lf_op s = Leaf (op s);;

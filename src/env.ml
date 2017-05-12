@@ -1,4 +1,5 @@
 open Ast
+open Big_int
 
 exception EnvErr of string;;
 
@@ -23,7 +24,7 @@ and closure = {name: fullname; impls :impl_tbl}
 (*TODO: can the type `value` be simplified, i.e. less number of types of values?*)
 and value =
     | ValNil
-    | ValInt of int
+    | ValInt of big_int
     | ValFloat of float
     | ValStr of string
     | ValBool of bool
@@ -38,7 +39,7 @@ and eatom =
 and estmt = eatom abs_tree
 ;;
 
-let obj_to_int (j :q_obj) :int =
+let obj_to_int (j :q_obj) :big_int =
     match j.v with
     | ValInt i -> i
     | _ -> raise (EnvErr "not a int")
@@ -91,7 +92,7 @@ and eq_q_type t1 t2 :bool =
 and eq_value v1 v2 :bool =
     match v1, v2 with
     | ValNil, ValNil -> true
-    | ValInt i1, ValInt i2 -> i1 = i2
+    | ValInt i1, ValInt i2 -> eq_big_int i1 i2
     | ValFloat f1, ValFloat f2 -> f1 = f2
     | ValStr s1, ValStr s2 -> s1 = s2
     | ValBool b1, ValBool b2 -> b1 = b2

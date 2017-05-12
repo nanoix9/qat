@@ -1,8 +1,8 @@
 type imm =
-    | Int of int
-    | Float of float
+    | Int of string
+    | Float of string
     | Str_ of string
-    | Bool of bool
+    | Bool of string
 
 type token =
     | EOS
@@ -20,10 +20,10 @@ type 'a abs_tree =
 type ast = token abs_tree
 
 let str_of_imm = function
-    | Int i -> "INT(" ^ (string_of_int i) ^ ")"
-    | Float f -> "FLOAT(" ^ (string_of_float f) ^ ")"
+    | Int i -> "INT(" ^ (i) ^ ")"
+    | Float f -> "FLOAT(" ^ (f) ^ ")"
     | Str_ s -> "STR(" ^ (s) ^ ")"
-    | Bool b -> "BOOL(" ^ (string_of_bool b) ^ ")";;
+    | Bool b -> "BOOL(" ^ (b) ^ ")";;
 
 let str_of_token = function
     | EOS -> "EOS"

@@ -1,0 +1,13 @@
+func pn (x) (println (show x));
+
+func e_iter (n prod e) (
+    def p1 (* prod n);
+    def item (/ 1. p1);
+    if (< item 1.e-20)
+        (return e)
+        (return (e_iter (+ n 1.) p1 (+ e item)));
+);
+
+func e (a) (e_iter 1. 1. 1.);
+
+pn (e 1);

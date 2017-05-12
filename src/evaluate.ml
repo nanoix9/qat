@@ -7,6 +7,7 @@ exception EvalErr of string;;
 
 type evalret =
     | EvalVal of q_obj
+    | EvalReturn of q_obj
     | EvalNone
 ;;
 
@@ -24,15 +25,16 @@ let eq_evalret r1 r2 =
 
 let str_of_evalret = function
     | EvalVal o -> str_of_obj o
+    | EvalReturn o -> "EVAL_RETURN(" ^ str_of_obj o ^ ")"
     | EvalNone -> "EVAL_NONE"
 ;;
 
 let imm_to_obj (i :imm) :q_obj =
     match i with
-    | Int n -> make_int n
-    | Float f -> make_float f
+    | Int n -> make_int (Big_int.big_int_of_string n)
+    | Float f -> make_float (float_of_string f)
     | Str_ s -> make_str s
-    | Bool b -> make_bool b
+    | Bool b -> make_bool (bool_of_string b)
 ;;
 
 let pre_eval_token (token :token) :eatom  =
@@ -82,10 +84,12 @@ and eval_list (env :env) (el :estmt list) :evalret =
 and eval_do env opd =
     match opd with
     | [] -> raise (EvalErr "DO: empty statement list")
-    | [last] -> eval_rec env last
+    | [last] -> (match eval_rec env last with
+        | EvalReturn o -> EvalVal o
+        | _ -> EvalNone)
     | first::rest ->
-            let _ = eval_rec env first in
-            eval_do env rest
+        let _ = eval_rec env first in
+        eval_do env rest
 and eval_if env opd =
     let eval_to_bool (cond :estmt) :bool =
         match eval_rec env cond with
@@ -97,15 +101,21 @@ and eval_if env opd =
     in
     match opd with
     | [cond; stmt_true;] ->
-            if eval_to_bool cond then
-                eval_rec env stmt_true
-            else
-                EvalNone
-    | [cond; stmt_true; stmt_false;] ->
-            if eval_to_bool cond then
-                eval_rec env stmt_true
-            else
-                eval_rec env stmt_false
+        (if eval_to_bool cond then
+            match eval_rec env stmt_true with
+            | (EvalReturn _) as r -> r
+            | _ -> EvalNone
+        else
+            EvalNone)
+    | [cond; stmt_true; stmt_false;] -> let res =
+        (if eval_to_bool cond then
+            eval_rec env stmt_true
+        else
+            eval_rec env stmt_false)
+        in
+        (match res with
+        | (EvalReturn _) as r -> r
+        | _ -> EvalNone)
     | _ -> raise (EvalErr "IF: must have 2 or 3 sub statements")
 and eval_def env opd =
     let _ = match opd with
@@ -158,7 +168,9 @@ and eval_func env opd =
     | _ -> raise (EvalErr "FUNC: incorrect syntax")
 and eval_return env opd =
     match opd with
-    | [stmt] -> eval_rec env stmt
+    | [stmt] -> (match eval_rec env stmt with
+        | EvalVal o -> EvalReturn o
+        | _ -> raise (EvalErr "RETURN: cannot be nested"))
     | _ -> raise (EvalErr "RETURN: the operand should be a single statement")
 and eval_scope env opd =
     let name, stmt = match opd with

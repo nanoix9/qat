@@ -35,14 +35,14 @@ let read_next stream :token =
             (Str.match_end (), (CloseGroup token))
         else if (mtch re_float) then
             let token = Str.matched_string buf in
-            (Str.match_end (), Imm (Float (float_of_string token)))
+            (Str.match_end (), Imm (Float (token)))
         else if (mtch re_hex)
                 || (mtch re_int) then
             let token = Str.matched_string buf in
-            (Str.match_end (), Imm (Int (int_of_string token)))
+            (Str.match_end (), Imm (Int (token)))
         else if (mtch re_bool) then
             let token = Str.matched_string buf in
-            (Str.match_end (), Imm (Bool (bool_of_string token)))
+            (Str.match_end (), Imm (Bool (token)))
         else if (mtch re_str_double_quotes)
                 || (Str.string_match re_str_single_quotes buf pos) then
             let token = Scanf.unescaped (Str.replace_matched "\\1" buf) in
