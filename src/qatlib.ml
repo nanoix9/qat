@@ -1,3 +1,4 @@
+open Ast
 open Parse
 open Expand
 open Evaluate
@@ -20,5 +21,15 @@ let run interp (code :string) :evalret =
 let run_no_macro interp (code :string) :evalret =
     code |> parse
         |> (evaluate interp.evaluator)
+;;
+
+let run_parse (code :string) :string =
+    code |> parse |> pretty_sexp_of_ast
+;;
+
+let run_expand interp (code :string) :string =
+    code |> parse
+        |> (expand interp.mmngr)
+        |> pretty_sexp_of_ast
 ;;
 

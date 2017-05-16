@@ -3,8 +3,7 @@ open Printf
 open Evaluate
 module DA = DynArray
 
-let run_file fn =
-    let interp = make_interp () in
+let read_file fn :string =
     let lines = DA.make 10 in
     let cont = ref true in
     let _ =
@@ -19,7 +18,23 @@ let run_file fn =
         done;
         close_in ic
     in
-    let code = "(" ^ (Util.join_da "\n" lines) ^ ")" in
+    "(" ^ Util.join_da "\n" lines ^ ")"
+;;
+
+let parse_file fn =
+    let code = read_file fn in
+    printf "%s\n" (run_parse code)
+;;
+
+let expand_file fn =
+    let interp = make_interp () in
+    let code = read_file fn in
+    printf "%s\n" (run_expand interp code)
+;;
+
+let run_file fn =
+    let interp = make_interp () in
+    let code = read_file fn in
     let _ = run_no_macro interp code in ()
     (*let _ =  printf "%s\n" code in ()*)
 ;;
@@ -45,9 +60,28 @@ let repl () =
 ;;
 
 let main () =
-    if Array.length Sys.argv > 1 then
-        let fn = Sys.argv.(1) in
-        run_file fn
+    let do_parse = ref false in
+    let do_expand = ref false in
+    let do_trans = ref false in
+    let fn = ref "" in
+    let arg_spec = [
+        ("-p", Arg.Set do_parse, "parse");
+        ("-x", Arg.Set do_expand, "macro expand");
+        ("-t", Arg.Set do_trans, "translate");
+    ] in
+    let usage = "Qat Interpreter" in
+    Arg.parse arg_spec (fun s -> fn := s) usage;
+    let fnn = !fn in
+    if fnn <> "" then begin
+        if !do_parse then
+            parse_file fnn
+        else if !do_expand then
+            expand_file fnn
+        else if !do_trans then
+            ()
+        else
+            run_file !fn
+    end
     else
         repl ()
 ;;

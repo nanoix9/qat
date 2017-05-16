@@ -203,13 +203,16 @@ let test_func () =
     let fimpl = make_func_impl ["fooimpl"] params body env in
     let fimpl2 = make_func_impl ["fooimpl2"] params2 body env in
     let fimpl3 = make_func_impl ["fooimpl3"] params3 body env in
+    let fimpl_empty = make_func_impl ["fooimpl_empty"] [] body env in
     printf "%s\n" (str_of_func_impl fimpl);
     add_impl_to_func func fimpl2;
     (*printf "%s\n" (str_of_func func);*)
     add_impl_to_func func fimpl;
     add_impl_to_func func fimpl3;
+    add_impl_to_func func fimpl_empty;
     printf "%s\n" (str_of_func func);
-    let params = [make_int 1; make_int 2] in
+    (*let params = [make_int 1; make_int 2] in*)
+    let params = [] in
     let f params =
         let impl = get_func_impl_for_params func params in
         (match impl with
@@ -273,7 +276,7 @@ let main () =
 
     (*macro_main ()*)
 
-    (*env_main ();*)
+    env_main ();
 
     eval_main ();
 
