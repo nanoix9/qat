@@ -1,0 +1,18 @@
+func pn (x) (println (show x));
+
+def x 3;
+def y 5;
+pn (+ "x: " (show x));
+pn (+ "y: " (show y));
+pn "";
+scope foo (
+    def x 4;
+    pn (+ "x: " (show x));
+    pn (+ "y: " (show y));
+    pn "";
+);
+
+func succ (x) (scope (+ x 1));
+pn (+ "x: " (show x));
+pn (+ "x successor: " (show (succ x)));
+pn "";

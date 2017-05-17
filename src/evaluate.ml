@@ -51,6 +51,11 @@ let rec pre_eval (exp :ast) :estmt =
     | NodeList el -> NodeList (List.map pre_eval el)
 ;;
 
+let print_env env :unit =
+    Printf.printf "====%s====\n" (str_of_fullname (Env.get_ns env));
+    Env.iter_deep (fun k v -> Printf.printf "%s\n" k) env
+;;
+
 let rec eval_rec (env :env) (ee :estmt) :evalret =
     match ee with
     | Atom t -> eval_atom env t
@@ -58,8 +63,10 @@ let rec eval_rec (env :env) (ee :estmt) :evalret =
 and eval_atom (env :env) (atom :eatom) :evalret =
     (*let _ = Printf.printf "========\n"; Env.iter (fun k v -> Printf.printf "%s\n" k) env in*)
     let o = match atom with
-        | Sym s ->
-            (try Env.get_deep env s
+        | Sym s -> (
+            (*print_env env;*)
+            (*Printf.printf "get: %s\n" s;*)
+            try Env.get_deep env s
             with Not_found ->
                 raise (EvalErr (Printf.sprintf "undefined symbol: %s" s)))
         | Obj o -> o
@@ -179,9 +186,14 @@ and eval_scope env opd =
         | _ -> raise (EvalErr "SCOPE: incorrect syntax")
     in
     eval_rec (make_sub_env name env) stmt
+    (*eval_rec env stmt*)
 and eval_apply env opr opd =
     let func = eval_to_obj env opr in
-    let args = List.map (eval_to_obj env) opd in
+    let args = match opd with
+        | [NodeList []] -> []
+        (* syntax of function call with zero parameter: (foo ()) *)
+        | _ -> List.map (eval_to_obj env) opd
+    in
     let types = List.map (fun a -> a.t) args in
     match get_func_impl_o func types with
     | None -> raise (EvalErr (Printf.sprintf
@@ -198,7 +210,7 @@ and eval_apply env opr opd =
             eval_rec sub_env stmt
         | FuncBodyInst inst -> EvalVal (inst args))
 and eval_to_obj env stmt =
-    (*let _ = Printf.printf "====\n"; Env.iter (fun k v -> Printf.printf "%s\n" k) env in*)
+    (*print_env env;*)
     get_obj_from_evalret (eval_rec env stmt)
 ;;
 

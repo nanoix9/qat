@@ -161,7 +161,7 @@ let rec get_deep env sym :q_obj =
     else
         match env.outer with
         | None -> raise Not_found
-        | Some e -> get e sym
+        | Some e -> get_deep e sym
 ;;
 
 let iter f env :unit =
