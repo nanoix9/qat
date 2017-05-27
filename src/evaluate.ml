@@ -84,6 +84,7 @@ and eval_list (env :env) (el :estmt list) :evalret =
         | "func" -> eval_func env opd
         | "return" -> eval_return env opd
         | "scope" -> eval_scope env opd
+        | "goto" -> eval_goto env opd
         | _ -> eval_apply env aopr opd
     )
     | aopr::opd -> eval_apply env aopr opd
@@ -157,7 +158,7 @@ and eval_func env opd =
             try Env.get_deep env name
             with Not_found ->
                 let f = make_func_o (make_fullname name ns) in
-                Env.set env name f;
+                (*Env.set env name f;*)
                 f
         in
         let params = List.map
@@ -171,7 +172,7 @@ and eval_func env opd =
         in
         let _add = make_func_impl_estmt_adder ns env in
         _add f name params body;
-        EvalNone
+        EvalVal f
     | _ -> raise (EvalErr "FUNC: incorrect syntax")
 and eval_return env opd =
     match opd with
@@ -187,12 +188,19 @@ and eval_scope env opd =
     in
     eval_rec (make_sub_env name env) stmt
     (*eval_rec env stmt*)
+and eval_goto env opd =
+    EvalNone
 and eval_apply env opr opd =
     let func = eval_to_obj env opr in
     let args = match opd with
         | [NodeList []] -> []
         (* syntax of function call with zero parameter: (foo ()) *)
         | _ -> List.map (eval_to_obj env) opd
+    in
+    let func, args = if is_func_o func then
+        func, args
+    else
+        call, func::args
     in
     let types = List.map (fun a -> a.t) args in
     match get_func_impl_o func types with

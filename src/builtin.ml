@@ -57,6 +57,7 @@ let float_t = make_builtin_type "float" num_t
 let str_t = make_builtin_type "str" obj_o
 let bool_t = make_builtin_type "bool" obj_o
 let func_t = make_builtin_type "function" obj_o
+let stmt_t = make_builtin_type "quote" obj_o
 let module_t = make_builtin_type "module" obj_o
 
 let make_int n :q_obj = make_obj int_t (ValInt n)
@@ -64,8 +65,16 @@ let make_float f :q_obj = make_obj float_t (ValFloat f)
 let make_str s :q_obj = make_obj str_t (ValStr s)
 let make_bool b :q_obj = make_obj bool_t (ValBool b)
 
+let make_stmt_o (s :estmt) :q_obj =
+    make_obj stmt_t (ValStmt s)
+;;
+
 let make_func_o name =
     make_obj func_t (ValClosure (make_func name))
+;;
+
+let is_func_o obj :bool =
+    obj.t == func_t
 ;;
 
 let add_impl_to_func_o func_o impl :unit =
@@ -162,6 +171,13 @@ let _op_helper op =
     let f = make_builtin_func op in
     let add = _add_builtin_func_impl f op in
     f, add
+;;
+
+(* `call` function should support variable parameters *)
+let call =
+    let f, add = _op_helper "call" in
+    (*add (_make_binop_params [type_o, obj_o])*)
+    f
 ;;
 
 let show =

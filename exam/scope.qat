@@ -1,4 +1,4 @@
-func pn (x) (println (show x));
+def pn (func pn (x) (println (show x)));
 
 def x 3;
 def y 5;
@@ -12,7 +12,7 @@ scope foo (
     pn "";
 );
 
-func succ (x) (scope (+ x 1));
+def succ (func succ (x) (scope (+ x 1)));
 pn (+ "x: " (show x));
 pn (+ "x successor: " (show (succ x)));
 pn "";

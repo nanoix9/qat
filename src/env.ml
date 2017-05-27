@@ -33,6 +33,7 @@ and value =
     | ValType of q_type
     | ValClosure of closure
     | ValScope of env
+    | ValStmt of estmt
 and eatom =
     | Sym of sym
     | Obj of q_obj
@@ -79,6 +80,12 @@ let obj_to_scope (j :q_obj) :env =
     match j.v with
     | ValScope i -> i
     | _ -> raise (EnvErr "not a scope")
+;;
+
+let obj_to_estmt (j :q_obj) :estmt =
+    match j.v with
+    | ValStmt i -> i
+    | _ -> raise (EnvErr "not a statememt")
 ;;
 
 let rec eq_q_obj o1 o2 :bool =
