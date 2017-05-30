@@ -8,7 +8,7 @@ exception EvalErr of string;;
 type evalret =
     | EvalVal of q_obj
     | EvalReturn of q_obj
-    | EvalGoto of q_obj
+    | EvalGoto of sym
     | EvalNone
 ;;
 
@@ -27,6 +27,7 @@ let eq_evalret r1 r2 =
 let str_of_evalret = function
     | EvalVal o -> str_of_obj o
     | EvalReturn o -> "EVAL_RETURN(" ^ str_of_obj o ^ ")"
+    | EvalGoto label -> "EVAL_GOTO(" ^ label ^ ")"
     | EvalNone -> "EVAL_NONE"
 ;;
 
@@ -91,6 +92,7 @@ and eval_list (env :env) (el :estmt list) :evalret =
     | aopr::opd -> eval_apply env aopr opd
     (*| opr::opd -> eval_list env ((eval_rec env opr)::opd)*)
 and eval_do env opd =
+    let labels = Hashtbl.create 1 in
     let rec helper opd =
         match opd with
         | [] -> raise (EvalErr "DO: empty statement list")
@@ -98,15 +100,21 @@ and eval_do env opd =
         | first::rest -> (
             match first with
             | NodeList (Atom (Sym "label")::Atom (Sym name)::[]) ->
-                Env.set env name (make_stmt_o (NodeList ((Atom (Sym "do"))::rest)));
+                (*Hashtbl.add labels name (make_stmt_o (NodeList ((Atom (Sym "do"))::rest)));*)
+                Hashtbl.add labels name rest;
                 helper rest
             | _ -> (let ret = eval_rec env first in
                 match ret with
-                | EvalReturn _ | EvalGoto _ -> ret
+                | EvalReturn _ -> ret
+                | EvalGoto label -> if Hashtbl.mem labels label then
+                        helper (Hashtbl.find labels label)
+                    else
+                        ret
                 | _ -> helper rest))
     in
     match helper opd with
     | EvalReturn o -> EvalVal o
+    | (EvalGoto o) as ret -> ret
     | _ -> EvalNone
 and eval_if env opd =
     let eval_to_bool (cond :estmt) :bool =
@@ -122,6 +130,7 @@ and eval_if env opd =
         (if eval_to_bool cond then
             match eval_rec env stmt_true with
             | (EvalReturn _) as r -> r
+            | (EvalGoto _) as r -> r
             | _ -> EvalNone
         else
             EvalNone)
@@ -133,6 +142,7 @@ and eval_if env opd =
         in
         (match res with
         | (EvalReturn _) as r -> r
+        | (EvalGoto _) as r -> r
         | _ -> EvalNone)
     | _ -> raise (EvalErr "IF: must have 2 or 3 sub statements")
 and eval_def env opd =
@@ -199,7 +209,9 @@ and eval_scope env opd =
     eval_rec (make_sub_env name env) stmt
     (*eval_rec env stmt*)
 and eval_goto env opd =
-    EvalNone
+    match opd with
+    | [Atom (Sym label)] -> EvalGoto label
+    | _ -> raise (EvalErr "GOTO: incorrect syntax")
 and eval_apply env opr opd =
     let func = eval_to_obj env opr in
     let args = match opd with

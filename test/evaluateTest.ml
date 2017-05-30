@@ -48,6 +48,18 @@ let suite =
                 e [id"return"; id"x"];
                 ]));
 
+        "test_func" >:: (fun c -> assert_eval_val c
+            (make_str "good")
+            (e [id"do";
+                e [id"def"; id"foo";
+                    e [id"func"; id"foo";
+                        e [id"x"; id"y"];
+                        e [id"if"; id"x";
+                            e [id"return"; id"y"];
+                            e [id"return"; i 100]]]];
+                e [id"foo"; b true; s "good"];
+                ]));
+
         "test_type" >:: (fun c -> assert_eval_val c
             (make_type (fullname_of_list ["foo_type"; "__main__"]) obj_o)
             (e [id"type"; id"foo_type"]));
@@ -67,9 +79,18 @@ let suite =
                 e [id"def"; id"x"; b true];
                 e [id"scope"; e [id"do";
                     e [id"def"; id"x"; i 100]]];
-                e [id"return"; id"x"]
-                ]));
+                e [id"return"; id"x"]]
+            ));
 
+        "test_goto" >:: (fun c -> assert_eval_val c
+            (make_bool true)
+            (e [id"do";
+                e [id"def"; id"x"; i 1];
+                e [id"label"; id"L1"];
+                e [id"if"; e [id">"; id"x"; i 0];
+                    e [id"goto"; id"L1"]];
+                e [id"return"; i 10]]
+            ));
     ]
 
 

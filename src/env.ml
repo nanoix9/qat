@@ -9,7 +9,8 @@ type fullname = string list
 type env = {dict: (sym, q_obj) Hashtbl.t;
     outer: env option;
     ns: fullname}
-and q_obj = {mutable t: q_obj; mutable v: value}
+and q_obj = {t: q_obj; v: value}
+and q_var = {vt: q_obj; mutable vv: q_obj}
 and q_type = {name: fullname; super: q_obj option}
 and func_impl = {name: fullname;
     params: (q_obj * sym) list;
@@ -34,6 +35,7 @@ and value =
     | ValClosure of closure
     | ValScope of env
     | ValStmt of estmt
+    | ValVar of q_var
 and eatom =
     | Sym of sym
     | Obj of q_obj

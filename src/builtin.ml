@@ -5,9 +5,9 @@ let env_builtin = make_env "builtin" None;;
 
 let builtin = get_ns env_builtin;;
 
-let rec obj_o = {t=type_o; v=ValType
+let rec obj_o :q_obj = {t=type_o; v=ValType
     {name=make_fullname "object" builtin; super=None}}
-and type_o = {t=type_o; v=ValType
+and type_o :q_obj = {t=type_o; v=ValType
     {name=make_fullname "type" builtin; super=Some obj_o}}
 ;;
 
@@ -59,11 +59,16 @@ let bool_t = make_builtin_type "bool" obj_o
 let func_t = make_builtin_type "function" obj_o
 let stmt_t = make_builtin_type "quoted" obj_o
 let module_t = make_builtin_type "module" obj_o
+let var_t = make_builtin_type "variable" obj_o
 
 let make_int n :q_obj = make_obj int_t (ValInt n)
 let make_float f :q_obj = make_obj float_t (ValFloat f)
 let make_str s :q_obj = make_obj str_t (ValStr s)
 let make_bool b :q_obj = make_obj bool_t (ValBool b)
+
+let make_var vt init_val :q_obj =
+    make_obj var_t (ValVar {vt=vt; vv=init_val})
+;;
 
 let make_stmt_o (s :estmt) :q_obj =
     make_obj stmt_t (ValStmt s)
