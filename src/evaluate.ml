@@ -8,6 +8,7 @@ exception EvalErr of string;;
 type evalret =
     | EvalVal of q_obj
     | EvalReturn of q_obj
+    | EvalGoto of q_obj
     | EvalNone
 ;;
 
@@ -90,14 +91,23 @@ and eval_list (env :env) (el :estmt list) :evalret =
     | aopr::opd -> eval_apply env aopr opd
     (*| opr::opd -> eval_list env ((eval_rec env opr)::opd)*)
 and eval_do env opd =
-    match opd with
-    | [] -> raise (EvalErr "DO: empty statement list")
-    | [last] -> (match eval_rec env last with
-        | EvalReturn o -> EvalVal o
-        | _ -> EvalNone)
-    | first::rest ->
-        let _ = eval_rec env first in
-        eval_do env rest
+    let rec helper opd =
+        match opd with
+        | [] -> raise (EvalErr "DO: empty statement list")
+        | [last] -> eval_rec env last
+        | first::rest -> (
+            match first with
+            | NodeList (Atom (Sym "label")::Atom (Sym name)::[]) ->
+                Env.set env name (make_stmt_o (NodeList ((Atom (Sym "do"))::rest)));
+                helper rest
+            | _ -> (let ret = eval_rec env first in
+                match ret with
+                | EvalReturn _ | EvalGoto _ -> ret
+                | _ -> helper rest))
+    in
+    match helper opd with
+    | EvalReturn o -> EvalVal o
+    | _ -> EvalNone
 and eval_if env opd =
     let eval_to_bool (cond :estmt) :bool =
         match eval_rec env cond with

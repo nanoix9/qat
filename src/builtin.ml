@@ -57,7 +57,7 @@ let float_t = make_builtin_type "float" num_t
 let str_t = make_builtin_type "str" obj_o
 let bool_t = make_builtin_type "bool" obj_o
 let func_t = make_builtin_type "function" obj_o
-let stmt_t = make_builtin_type "quote" obj_o
+let stmt_t = make_builtin_type "quoted" obj_o
 let module_t = make_builtin_type "module" obj_o
 
 let make_int n :q_obj = make_obj int_t (ValInt n)
