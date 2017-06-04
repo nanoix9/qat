@@ -87,6 +87,7 @@ and eval_list (env :env) (el :estmt list) :evalret =
         | "return" -> eval_return env opd
         | "scope" -> eval_scope env opd
         | "goto" -> eval_goto env opd
+        (*| "var" -> eval_var env opd*)
         | _ -> eval_apply env aopr opd
     )
     | aopr::opd -> eval_apply env aopr opd
@@ -212,6 +213,12 @@ and eval_goto env opd =
     match opd with
     | [Atom (Sym label)] -> EvalGoto label
     | _ -> raise (EvalErr "GOTO: incorrect syntax")
+and eval_var env opd =
+    (*deprecated*)
+    (*TODO: change to a function*)
+    match opd with
+    | [tp; init] -> EvalVal (make_var (eval_to_obj env tp) (eval_to_obj env init))
+    | _ -> raise (EvalErr "VAR: incorrect syntax")
 and eval_apply env opr opd =
     let func = eval_to_obj env opr in
     let args = match opd with
@@ -221,6 +228,8 @@ and eval_apply env opr opd =
     in
     let func, args = if is_func_o func then
         func, args
+    else if is_type_o func then
+        new_, func::args
     else
         call, func::args
     in

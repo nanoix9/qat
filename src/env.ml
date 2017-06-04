@@ -42,6 +42,8 @@ and eatom =
 and estmt = eatom abs_tree
 ;;
 
+let ident (j :q_obj) :q_obj = j;;
+
 let obj_to_int (j :q_obj) :big_int =
     match j.v with
     | ValInt i -> i
@@ -88,6 +90,12 @@ let obj_to_estmt (j :q_obj) :estmt =
     match j.v with
     | ValStmt i -> i
     | _ -> raise (EnvErr "not a statememt")
+;;
+
+let obj_to_var (j :q_obj) :q_var =
+    match j.v with
+    | ValVar i -> i
+    | _ -> raise (EnvErr "not a variable")
 ;;
 
 let rec eq_q_obj o1 o2 :bool =

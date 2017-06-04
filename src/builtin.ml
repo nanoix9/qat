@@ -29,6 +29,7 @@ let rec str_of_value (v :value) :string =
             in
             str_of_fullname t.name ^ sup_info
     | ValClosure c -> "function(" ^ str_of_fullname c.name ^ ")"
+    | ValVar v -> "variable(type=" ^ str_of_value (v.vt.v) ^ ")"
     | _ -> "NOT SUPPORTED"
 ;;
 
@@ -51,6 +52,23 @@ let make_builtin_type (sname :string) (sup :q_obj) :q_obj =
     make_type (make_fullname sname builtin) sup
 ;;
 
+let is_type_o j :bool =
+    j.t == type_o
+;;
+
+let rec is_subtype (tp1 :q_obj) (tp2 :q_obj) :bool =
+    if tp1 == tp2 then
+        true
+    else
+        match (obj_to_type tp1).super with
+        | None -> false
+        | Some t -> is_subtype t tp2
+;;
+
+let is_instance (obj :q_obj) (tp :q_obj) :bool =
+    is_subtype obj.t tp
+;;
+
 let num_t = make_builtin_type "numeric" obj_o
 let int_t = make_builtin_type "int" num_t
 let float_t = make_builtin_type "float" num_t
@@ -59,7 +77,7 @@ let bool_t = make_builtin_type "bool" obj_o
 let func_t = make_builtin_type "function" obj_o
 let stmt_t = make_builtin_type "quoted" obj_o
 let module_t = make_builtin_type "module" obj_o
-let var_t = make_builtin_type "variable" obj_o
+let var_t = make_builtin_type "var" obj_o
 
 let make_int n :q_obj = make_obj int_t (ValInt n)
 let make_float f :q_obj = make_obj float_t (ValFloat f)
@@ -153,11 +171,26 @@ let _make_unop pack extract =
     ret
 ;;
 
-let _make_binop pack extract =
-    let ret f = function
-        | a::b::[] -> pack (f (extract a) (extract b))
+let _make_bin_func pack extract1 extract2 =
+    let func f = function
+        | a::b::[] -> pack (f (extract1 a) (extract2 b));
     in
-    ret
+    func
+;;
+
+let _make_bin_cmd extract1 extract2 =
+    _make_bin_func (fun x -> nil) extract1 extract2
+;;
+
+let _make_binop pack extract =
+    _make_bin_func pack extract extract
+;;
+
+let _make_tri_func pack extract1 extract2 extract3 =
+    let func f = function
+        | a::b::c::[] -> pack (f (extract1 a) (extract2 b) (extract3 c))
+    in
+    func
 ;;
 
 let _unop_ret_str extract = _make_unop make_str extract;;
@@ -176,6 +209,21 @@ let _op_helper op =
     let f = make_builtin_func op in
     let add = _add_builtin_func_impl f op in
     f, add
+;;
+
+let new_ =
+    let f, add = _op_helper "new" in
+    add (make_params [type_o; obj_o])
+        (_make_bin_func ident ident (fun (j :q_obj) -> j.v)
+            (fun a v -> make_obj a v));
+    add (make_params [type_o; type_o; obj_o])
+        (_make_tri_func ident ident ident ident
+            (fun a b c -> if a == var_t then
+                make_var b c
+            else
+                (*TODO: return exception here*)
+                nil));
+    f
 ;;
 
 (* `call` function should support variable parameters *)
@@ -309,6 +357,22 @@ let op_lsr =
     f
 ;;
 
+let assign =
+    let f, add = _op_helper ":=" in
+    add (make_params [var_t; obj_o])
+        (_make_bin_cmd obj_to_var ident
+            (fun a b -> assert (is_instance b a.vt); a.vv <- b));
+    f
+;;
+
+let deref =
+    let f, add = _op_helper "@" in
+    add (make_params [var_t;])
+        (_make_unop ident obj_to_var
+            (fun a -> a.vv));
+    f
+;;
+
 let make_module_on_env env :q_obj =
     make_obj module_t (ValScope env)
 ;;
@@ -355,8 +419,12 @@ _set_obj float_t;
 _set_obj str_t;
 _set_obj bool_t;
 _set_obj func_t;
+_set_obj stmt_t;
 _set_obj module_t;
+_set_obj var_t;
 
+_set_obj new_;
+_set_obj call;
 _set_obj show;
 
 _set_obj op_add;
@@ -380,5 +448,8 @@ _set_obj op_lnot;
 _set_obj op_lsl;
 _set_obj op_asr;
 _set_obj op_lsr;
+
+_set_obj assign;
+_set_obj deref;
 ;;
 

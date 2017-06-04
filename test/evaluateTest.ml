@@ -82,10 +82,18 @@ let suite =
                 e [id"return"; id"x"]]
             ));
 
-        "test_goto" >:: (fun c -> assert_eval_val c
-            (make_bool true)
+        "test_var" >:: (fun c -> assert_eval_val c
+            (make_int 1)
             (e [id"do";
-                e [id"def"; id"x"; i 1];
+                e [id"def"; id"x"; e [id"var"; id"int"; i 0]];
+                e [id":="; id"x"; e [id"+"; e [id"@"; id"x"]; i 1]];
+                e [id"return"; e [id"@"; id"x"]]]
+            ));
+
+        "test_goto" >:: (fun c -> assert_eval_val c
+            (make_int 10)
+            (e [id"do";
+                e [id"def"; id"x"; i 0];
                 e [id"label"; id"L1"];
                 e [id"if"; e [id">"; id"x"; i 0];
                     e [id"goto"; id"L1"]];
