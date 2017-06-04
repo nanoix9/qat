@@ -1,0 +1,20 @@
+def pn (func pn (x) (println (show x)));
+
+def gcd (func gcd ((a int) (b int)) (
+    def va (var a);
+    def vb (var b);
+    def t (var 0);
+    label L1;
+    := t (@ vb);
+    := vb (% (@ va) (@ vb));
+    := va (@ t);
+    if (!= 0 (@ vb))
+        (goto L1);
+    return (@ va);
+));
+
+pn (gcd 20 15);
+pn (gcd 28 91);
+pn (gcd 13 17);
+pn (gcd 100 4);
+pn (gcd 4 100);
