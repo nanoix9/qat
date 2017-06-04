@@ -91,13 +91,19 @@ let suite =
             ));
 
         "test_goto" >:: (fun c -> assert_eval_val c
-            (make_int 10)
+            (make_int 45)
             (e [id"do";
-                e [id"def"; id"x"; i 0];
+                e [id"def"; id"x"; e [id"var"; id"int"; i 9]];
+                e [id"def"; id"sum"; e [id"var"; id"int"; i 0]];
                 e [id"label"; id"L1"];
-                e [id"if"; e [id">"; id"x"; i 0];
+                e [id":="; id"sum";
+                    e [id"+";
+                        e [id"@"; id"sum"];
+                        e [id"@"; id"x"]]];
+                e [id":="; id"x"; e [id"-"; e [id"@"; id"x"]; i 1]];
+                e [id"if"; e [id">"; e [id"@"; id"x"]; i 0];
                     e [id"goto"; id"L1"]];
-                e [id"return"; i 10]]
+                e [id"return"; e [id"@"; id"sum"]]]
             ));
     ]
 
