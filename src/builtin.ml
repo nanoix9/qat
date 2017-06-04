@@ -214,15 +214,12 @@ let _op_helper op =
 let new_ =
     let f, add = _op_helper "new" in
     add (make_params [type_o; obj_o])
-        (_make_bin_func ident ident (fun (j :q_obj) -> j.v)
-            (fun a v -> make_obj a v));
-    add (make_params [type_o; type_o; obj_o])
-        (_make_tri_func ident ident ident ident
-            (fun a b c -> if a == var_t then
-                make_var b c
-            else
-                (*TODO: return exception here*)
-                nil));
+        (function
+            | a::b::[] ->
+                if a == var_t then
+                    make_var b.t b
+                else
+                    make_obj a b.v);
     f
 ;;
 
