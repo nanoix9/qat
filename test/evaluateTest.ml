@@ -55,6 +55,7 @@ let suite =
                     e [id"func"; id"foo";
                         e [id"x"; id"y"];
                         e [id"if"; id"x";
+                            (*TODO: seems to be a bug. should get an EvalReturn *)
                             e [id"return"; id"y"];
                             e [id"return"; i 100]]]];
                 e [id"foo"; b true; s "good"];
@@ -88,6 +89,17 @@ let suite =
                 e [id"def"; id"x"; e [id"var"; i 0]];
                 e [id":="; id"x"; e [id"+"; e [id"@"; id"x"]; i 1]];
                 e [id"return"; e [id"@"; id"x"]]]
+            ));
+
+        "test_var" >:: (fun c -> assert_eval_val c
+            (make_str "foo")
+            (e [id"do";
+                e [id"def"; id"x"; e [id"struct";
+                    e [id"int"; i 100];
+                    e [id"string"; s "foo"];
+                    e [id"function";
+                        e [id"func"; id"bar"; e [id"x"]; b true]]]];
+                e [id"return"; e [id"getattr"; id"x"; s "string"]]]
             ));
 
         "test_goto" >:: (fun c -> assert_eval_val c

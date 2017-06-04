@@ -36,6 +36,7 @@ and value =
     | ValScope of env
     | ValStmt of estmt
     | ValVar of q_var
+    | ValStruct of (sym, q_obj) Hashtbl.t
 and eatom =
     | Sym of sym
     | Obj of q_obj
@@ -96,6 +97,12 @@ let obj_to_var (j :q_obj) :q_var =
     match j.v with
     | ValVar i -> i
     | _ -> raise (EnvErr "not a variable")
+;;
+
+let obj_to_struct (j :q_obj) :(sym, q_obj) Hashtbl.t =
+    match j.v with
+    | ValStruct s -> s
+    | _ -> raise (EnvErr "not a struct")
 ;;
 
 let rec eq_q_obj o1 o2 :bool =

@@ -88,6 +88,7 @@ and eval_list (env :env) (el :estmt list) :evalret =
         | "scope" -> eval_scope env opd
         | "goto" -> eval_goto env opd
         (*| "var" -> eval_var env opd*)
+        | "struct" -> eval_struct env opd
         | _ -> eval_apply env aopr opd
     )
     | aopr::opd -> eval_apply env aopr opd
@@ -215,10 +216,18 @@ and eval_goto env opd =
     | _ -> raise (EvalErr "GOTO: incorrect syntax")
 and eval_var env opd =
     (*deprecated*)
+    assert false;
     (*TODO: change to a function*)
     match opd with
     | [tp; init] -> EvalVal (make_var (eval_to_obj env tp) (eval_to_obj env init))
     | _ -> raise (EvalErr "VAR: incorrect syntax")
+and eval_struct env opd =
+    let f item =
+        match item with
+        | NodeList [Atom (Sym name); value] -> name, eval_to_obj env value
+        | _ -> raise (EvalErr "STRUCT: incorrect field")
+    in
+    EvalVal (make_struct (List.map f opd))
 and eval_apply env opr opd =
     let func = eval_to_obj env opr in
     let args = match opd with

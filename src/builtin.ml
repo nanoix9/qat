@@ -78,6 +78,7 @@ let func_t = make_builtin_type "function" obj_o
 let stmt_t = make_builtin_type "quoted" obj_o
 let module_t = make_builtin_type "module" obj_o
 let var_t = make_builtin_type "var" obj_o
+let struct_t = make_builtin_type "struct" obj_o
 
 let make_int n :q_obj = make_obj int_t (ValInt n)
 let make_float f :q_obj = make_obj float_t (ValFloat f)
@@ -90,6 +91,15 @@ let make_var vt init_val :q_obj =
 
 let make_stmt_o (s :estmt) :q_obj =
     make_obj stmt_t (ValStmt s)
+;;
+
+let make_struct item_list :q_obj =
+    let ht = Hashtbl.create 1 in
+    let f (name, value) =
+        Hashtbl.add ht name value
+    in
+    let _ = List.iter f item_list in
+    make_obj struct_t (ValStruct ht)
 ;;
 
 let make_func_o name =
@@ -193,6 +203,10 @@ let _make_tri_func pack extract1 extract2 extract3 =
     func
 ;;
 
+let _make_tri_cmd extract1 extract2 extract3 =
+    _make_tri_func (fun x -> nil) extract1 extract2 extract3
+;;
+
 let _unop_ret_str extract = _make_unop make_str extract;;
 
 let _unop_int = _make_unop make_int obj_to_int;;
@@ -236,6 +250,22 @@ let show =
     add _float1 (_unop_ret_str obj_to_float (fun a -> string_of_float a));
     add _str1 (_unop_ret_str obj_to_str (fun a -> a));
     add _bool1 (_unop_ret_str obj_to_bool (fun a -> string_of_bool a));
+    f
+;;
+
+let getattr =
+    let f, add = _op_helper "getattr" in
+    add (make_params [struct_t; str_t])
+        (_make_bin_func ident obj_to_struct obj_to_str
+            (fun s name -> Hashtbl.find s name));
+    f
+;;
+
+let setattr =
+    let f, add = _op_helper "setattr" in
+    add (make_params [struct_t; str_t; obj_o])
+        (_make_tri_cmd obj_to_struct obj_to_str ident
+            (fun s name value -> Hashtbl.find s name));
     f
 ;;
 
@@ -419,6 +449,7 @@ _set_obj func_t;
 _set_obj stmt_t;
 _set_obj module_t;
 _set_obj var_t;
+_set_obj struct_t;
 
 _set_obj new_;
 _set_obj call;
@@ -448,5 +479,8 @@ _set_obj op_lsr;
 
 _set_obj assign;
 _set_obj deref;
+
+_set_obj getattr;
+_set_obj setattr;
 ;;
 
