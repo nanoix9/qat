@@ -26,7 +26,9 @@
 
         (foo (cast x int) "foo")
 
-
+- while using `func`, it's different to create a new function or
+    to add new implementation to existing function. The current
+    mechanism seems not to work well in the latter case
 
 # TODO
 
