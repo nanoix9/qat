@@ -180,7 +180,7 @@ and eval_func env opd =
             try Env.get_deep env name
             with Not_found ->
                 let f = make_func_o (make_fullname name ns) in
-                (*Env.set env name f;*)
+                Env.set env name f;
                 f
         in
         let params = List.map
@@ -195,6 +195,7 @@ and eval_func env opd =
         let _add = make_func_impl_estmt_adder ns env in
         _add f name params body;
         EvalVal f
+        (*EvalVoid*)
     | _ -> raise (EvalErr "FUNC: incorrect syntax")
 and eval_return env opd =
     match opd with

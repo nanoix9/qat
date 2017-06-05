@@ -1,10 +1,10 @@
-def pn (func pn (x) (println (show x)));
+func pn (x) (println (show x));
 
 def complex (type complex struct);
 
-def make_complex (func make_complex ((real float) (imag float)) (
+func make_complex ((real float) (imag float)) (
     new complex (struct (real real) (imag imag))
-));
+);
 
 func show ((c complex)) (
     (+
@@ -12,8 +12,8 @@ func show ((c complex)) (
         (+ (show (getattr c "imag")) "i"))
 );
 
-def real (func real ((c complex)) (getattr c "real"));
-def imag (func imag ((c complex)) (getattr c "imag"));
+func real ((c complex)) (getattr c "real");
+func imag ((c complex)) (getattr c "imag");
 
 func + ((c complex) (d complex)) (
     make_complex (+ (real c) (real d)) (+ (imag c) (imag d))

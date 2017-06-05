@@ -1,4 +1,4 @@
-def pn (func pn (x) (println (show x)));
+func pn (x) (println (show x));
 def x 10;
 def y 6;
 pn (+ x 2);

@@ -1,12 +1,12 @@
-def pn (func pn (x) (println (show x)));
+func pn (x) (println (show x));
 
-def foo (func foo (x) (
+func foo (x) (
     if (> x 0)
         (return 10);
     def y (- x);
     return y;
     (- y 100);
-));
+);
 
 pn (foo 8);
 pn (foo -8);

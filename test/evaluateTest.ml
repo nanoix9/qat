@@ -50,13 +50,12 @@ let suite =
         "test_func" >:: (fun c -> assert_eval_val c
             (make_str "good")
             (e [id"do";
-                e [id"def"; id"foo";
-                    e [id"func"; id"foo";
-                        e [id"x"; id"y"];
-                        e [id"do";
-                            e [id"if"; id"x";
-                                e [id"return"; id"y"];
-                                e [id"return"; i 100]]]]];
+                e [id"func"; id"foo";
+                    e [id"x"; id"y"];
+                    e [id"do";
+                        e [id"if"; id"x";
+                            e [id"return"; id"y"];
+                            e [id"return"; i 100]]]];
                 e [id"return"; e [id"foo"; b true; s "good"]];
                 ]));
 

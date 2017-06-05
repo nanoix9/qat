@@ -1,14 +1,14 @@
-def pn (func pn (x) (println (show x)));
+func pn (x) (println (show x));
 
-def fib_rec (func fib_rec (n) (
+func fib_rec (n) (
     if (|| (< n 0) (== n 0))
         (return 0)
         (if (|| (== n 1) (== n 2))
             (return 1)
             (return (+ (fib (- n 1)) (fib (- n 2)))));
-));
+);
 
-def fib_iter (func fib_iter (n f2 f1) (
+func fib_iter (n f2 f1) (
     if (|| (< n 0) (== n 0))
         (return 0)
         (if (== n 1)
@@ -17,11 +17,11 @@ def fib_iter (func fib_iter (n f2 f1) (
                 (return f1)
                 (return (fib_iter (- n 1) f1 (+ f2 f1))))
         );
-));
+);
 
-def fib (func fib (n) (fib_iter n 1 1));
+func fib (n) (fib_iter n 1 1);
 
-def pfib (func pfib (i) (pn (+ (+ (show i) ":\t") (show (fib i)))));
+func pfib (i) (pn (+ (+ (show i) ":\t") (show (fib i))));
 
 pfib -1;
 pfib 0;

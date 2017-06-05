@@ -1,4 +1,4 @@
-def pn (func pn (x) (println (show x)));
+func pn (x) (println (show x));
 
 def x 10;
 pn (do (if (> x 5) (return 10) (return 20)));
