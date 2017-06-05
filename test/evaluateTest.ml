@@ -27,7 +27,6 @@ let s x :ast = Atom (Imm (Str_ x));;
 
 let make_int i = Builtin.make_int (big_int_of_int i);;
 
-(* Name the test cases and group them together *)
 let suite =
     "evaluate" >::: [
         "test_sym" >:: (fun c -> assert_eval_val c
@@ -54,11 +53,11 @@ let suite =
                 e [id"def"; id"foo";
                     e [id"func"; id"foo";
                         e [id"x"; id"y"];
-                        e [id"if"; id"x";
-                            (*TODO: seems to be a bug. should get an EvalReturn *)
-                            e [id"return"; id"y"];
-                            e [id"return"; i 100]]]];
-                e [id"foo"; b true; s "good"];
+                        e [id"do";
+                            e [id"if"; id"x";
+                                e [id"return"; id"y"];
+                                e [id"return"; i 100]]]]];
+                e [id"return"; e [id"foo"; b true; s "good"]];
                 ]));
 
         "test_type" >:: (fun c -> assert_eval_val c

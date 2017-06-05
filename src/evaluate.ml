@@ -9,7 +9,7 @@ type evalret =
     | EvalVal of q_obj
     | EvalReturn of q_obj
     | EvalGoto of sym
-    | EvalNone
+    | EvalVoid
 ;;
 
 let get_obj_from_evalret r :q_obj =
@@ -28,7 +28,7 @@ let str_of_evalret = function
     | EvalVal o -> str_of_obj o
     | EvalReturn o -> "EVAL_RETURN(" ^ str_of_obj o ^ ")"
     | EvalGoto label -> "EVAL_GOTO(" ^ label ^ ")"
-    | EvalNone -> "EVAL_NONE"
+    | EvalVoid -> "EVAL_VOID"
 ;;
 
 let imm_to_obj (i :imm) :q_obj =
@@ -76,7 +76,7 @@ and eval_atom (env :env) (atom :eatom) :evalret =
     EvalVal o
 and eval_list (env :env) (el :estmt list) :evalret =
     match el with
-    | [] -> EvalNone
+    | [] -> EvalVoid
     | [a] -> eval_rec env a
     | (Atom (Sym opr) as aopr)::opd -> (match opr with
         | "do" -> eval_do env opd
@@ -117,7 +117,7 @@ and eval_do env opd =
     match helper opd with
     | EvalReturn o -> EvalVal o
     | (EvalGoto o) as ret -> ret
-    | _ -> EvalNone
+    | _ -> EvalVoid
 and eval_if env opd =
     let eval_to_bool (cond :estmt) :bool =
         match eval_rec env cond with
@@ -133,9 +133,9 @@ and eval_if env opd =
             match eval_rec env stmt_true with
             | (EvalReturn _) as r -> r
             | (EvalGoto _) as r -> r
-            | _ -> EvalNone
+            | _ -> EvalVoid
         else
-            EvalNone)
+            EvalVoid)
     | [cond; stmt_true; stmt_false;] -> let res =
         (if eval_to_bool cond then
             eval_rec env stmt_true
@@ -145,7 +145,7 @@ and eval_if env opd =
         (match res with
         | (EvalReturn _) as r -> r
         | (EvalGoto _) as r -> r
-        | _ -> EvalNone)
+        | _ -> EvalVoid)
     | _ -> raise (EvalErr "IF: must have 2 or 3 sub statements")
 and eval_def env opd =
     let _ = match opd with
@@ -160,7 +160,7 @@ and eval_def env opd =
             | _ -> raise (EvalErr "DEF: assignee is not a value"))
         | _ -> raise (EvalErr "DEF: incorrect syntax")
     in
-    EvalNone
+    EvalVoid
 and eval_type env opd =
     let name, sup = match opd with
         | [Atom (Sym name)] -> name, obj_o
@@ -249,13 +249,15 @@ and eval_apply env opr opd =
         (str_of_value func.v) (str_of_type_list types)))
     | Some impl -> (match impl.body with
         | FuncBodyEstmt stmt -> let sub_env =
-            make_sub_env (get_basename impl.name) impl.env
+                make_sub_env (get_basename impl.name) impl.env
             in
-            let f (t, s) v =
-                Env.set sub_env s v
-            in
+            let f (t, s) v = Env.set sub_env s v in
             List.iter2 f impl.params args;
-            eval_rec sub_env stmt
+            (match eval_rec sub_env stmt with
+            | (EvalVal _) as r -> r
+            | EvalVoid as r -> r
+            | _ -> raise (EvalErr
+                "APPLY: function returned value should only be object or void"))
         | FuncBodyInst inst -> EvalVal (inst args))
 and eval_to_obj env stmt =
     (*print_env env;*)
