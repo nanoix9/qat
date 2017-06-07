@@ -1,6 +1,7 @@
 open Ast
 open Parse
 open Expand
+open Sementic
 open Evaluate
 
 type interp = {mmngr: (Macro.macro_elem, Ast.ast) macro_manager;
@@ -15,11 +16,13 @@ let make_interp () =
 let run interp (code :string) :evalret =
     code |> parse
         |> (expand interp.mmngr)
+        |> sementic_analyze
         |> (evaluate interp.evaluator)
 ;;
 
 let run_no_macro interp (code :string) :evalret =
     code |> parse
+        |> sementic_analyze
         |> (evaluate interp.evaluator)
 ;;
 

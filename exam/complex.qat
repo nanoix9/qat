@@ -1,4 +1,7 @@
 func pn (x) (println (show x));
+func iff ((cond bool) (x object) (y object)) (
+    if cond (return x) (return y);
+);
 
 def complex (type complex struct);
 
@@ -6,17 +9,22 @@ func make_complex ((real float) (imag float)) (
     new complex (struct (real real) (imag imag))
 );
 
-func show ((c complex)) (
-    (+
-        (+ (show (getattr c "real")) "+")
-        (+ (show (getattr c "imag")) "i"))
-);
-
 func real ((c complex)) (getattr c "real");
 func imag ((c complex)) (getattr c "imag");
 
+func show ((c complex)) (
+    def imag (imag c);
+    return (+
+        (+ (show (real c)) (iff (< imag 0.) "" "+"))
+        (+ (show (imag)) "i"));
+);
+
 func + ((c complex) (d complex)) (
     make_complex (+ (real c) (real d)) (+ (imag c) (imag d))
+);
+
+func - ((c complex) (d complex)) (
+    make_complex (- (real c) (real d)) (- (imag c) (imag d))
 );
 
 def c (make_complex 1.0 -1.0);
@@ -25,3 +33,4 @@ def d (make_complex 3.0 4.0);
 pn c;
 pn d;
 pn (+ c d);
+pn (- c d);
