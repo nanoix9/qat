@@ -8,7 +8,7 @@ let raise_err infor exp =
 
 let rec validate_special_form (exp :ast) :bool =
     match exp with
-    | (Atom _) as t -> true
+    | Atom _ -> true
     | NodeList nl -> validate_list nl exp
 and validate_list (nl :ast list) (exp :ast) :bool =
     match nl with
@@ -52,7 +52,13 @@ and validate_func opd exp =
     match opd with
     | (Atom name)::(NodeList param_stmts)::body::[] ->
         (match name with
-        | Id _ | Op _ -> validate_each opd
+        | Id _ | Op _ -> (let f param =
+                match param with
+                | Atom (Id p) | NodeList [Atom (Id p)] -> true
+                | NodeList [Atom (Id p); Atom (Id tp)] -> true
+                | _ -> raise_err "FUNC parameter invalid" param
+            in
+            List.for_all f param_stmts && validate_each opd)
         | _ -> raise_err "FUNC statement invalid" exp)
     | _ -> raise_err "FUNC statement invalid" exp
 and validate_return opd exp =

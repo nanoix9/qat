@@ -273,9 +273,45 @@ let expand_one_level mmngr stmt =
     expand_parse_tree mmngr tree
 ;;
 
-let rec expand mmngr stmt =
+let compute_fixity assoc_stmt pattern_stmt =
+;;
+
+let ast_to_m_ast stmt :macro_ast =
+    let trans_stmt e head_rev =
+        match e with
+        | [] -> head_rev
+        | Atom (Op "?")::Atom (Id opd)::rest ->
+            trans_stmt rest (Variable opd::head_rev)
+        | Atom opr::rest ->
+            trans_stmt rest (Literal opr::head_rev)
+        | _ -> raise (MacroErr "MACRO parameter invalid")
+    in
+    match stmt with
+    | NodeList nl -> List.rev (trans_stmt nl head [])
+    | _ -> raise (MacroErr "MACRO pattern/body should be a statement")
+;;
+
+let define_macro mmngr
+        (assoc_stmt :ast option)
+        (preced_stmt :ast)
+        (pattern_stmt :ast)
+        (body_stmt :ast) :unit =
+    let fix = compute_fixity assoc_stmt pattern_stmt in
+    let pre = compute_precendence preced_stmt in
+    let m = new_macro (ast_to_m_ast pattern_stmt) (ast_to_m_ast body_stmt)
+    in
+    add_macro mmngr m
+;;
+
+let rec expand mmngr (stmt :ast) :ast =
     match stmt with
     | (Atom _) as a -> a
+    | NodeList (Atom (Id "defmacro")::tail) -> (match tail with
+        | [preced_stmt; pattern_stmt; body_stmt] ->
+            define_macro tail; NodeList []
+        | [assoc_stmt; preced_stmt; pattern_stmt; body_stmt] ->
+            define_macro tail; NodeList []
+        | raise MacroErr "DEFMACRO: invalid syntax")
     | NodeList nl -> let deep_expanded =
         NodeList (List.map (expand mmngr) nl) in
         try
