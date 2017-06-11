@@ -42,3 +42,8 @@ let sgn i :int = match i with
     | x when x > 0 -> 1
     | _ -> -1
 ;;
+
+let rec list_last = function
+    | x::[] -> x
+    | _::xs -> list_last xs
+    | []    -> failwith "no element"

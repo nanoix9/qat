@@ -273,21 +273,54 @@ let expand_one_level mmngr stmt =
     expand_parse_tree mmngr tree
 ;;
 
-let compute_fixity assoc_stmt pattern_stmt =
+let compute_assoc (assoc_stmt :ast option) :associativity option =
+    match assoc_stmt with
+    | None -> None
+    | Some (NodeList [Atom (Id "associativity"); Atom (Id assoc_str)]) ->
+        let assoc = match assoc_str with
+            | "left" -> Left
+            | "right" -> Right
+            | "none" -> Non
+            | _ -> raise (MacroErr "Invalid Associativity")
+        in
+        Some assoc
+    | _ -> raise (MacroErr "")
 ;;
 
-let ast_to_m_ast stmt :macro_ast =
-    let trans_stmt e head_rev =
+(*TODO: can prefix and postfix be non-associated?*)
+let compute_fixity assoc_stmt pattern =
+    let assoc = compute_assoc assoc_stmt in
+    (*match pattern with*)
+    (*| NodeList nl -> (match (List.hd nl, Util.list_last nl) with*)
+    match (List.hd pattern, Util.list_last pattern) with
+    | Literal _, Variable _ -> (match assoc with
+        | None | Some Right -> Prefix
+        | _ -> raise (MacroErr "Prefix can only be right associated"))
+    | Variable _, Variable _ -> (match assoc with
+        | Some a -> Infix a
+        | _ -> raise (MacroErr
+            "Associativity must be provieded for infix operator"))
+    | Variable _, Literal _ -> (match assoc with
+        | None | Some Left -> Postfix
+        | _ -> raise (MacroErr "Postfix can only be left associated"))
+    | Literal _, Literal _ -> (match assoc with
+        | None | Some Non -> Closed
+        | _ -> raise (MacroErr "Closed can only be none associated"))
+    (*| _ -> raise (MacroErr "")*)
+;;
+
+let ast_to_m_ast stmt =
+    let rec trans_rev_stmt e head_rev =
         match e with
         | [] -> head_rev
         | Atom (Op "?")::Atom (Id opd)::rest ->
-            trans_stmt rest (Variable opd::head_rev)
+            trans_rev_stmt rest (Variable opd::head_rev)
         | Atom opr::rest ->
-            trans_stmt rest (Literal opr::head_rev)
-        | _ -> raise (MacroErr "MACRO parameter invalid")
+            trans_rev_stmt rest (Literal opr::head_rev)
+        | _ -> raise (MacroErr "MACRO element invalid")
     in
     match stmt with
-    | NodeList nl -> List.rev (trans_stmt nl head [])
+    | NodeList nl -> List.rev (trans_rev_stmt nl [])
     | _ -> raise (MacroErr "MACRO pattern/body should be a statement")
 ;;
 
@@ -296,22 +329,29 @@ let define_macro mmngr
         (preced_stmt :ast)
         (pattern_stmt :ast)
         (body_stmt :ast) :unit =
-    let fix = compute_fixity assoc_stmt pattern_stmt in
-    let pre = compute_precendence preced_stmt in
-    let m = new_macro (ast_to_m_ast pattern_stmt) (ast_to_m_ast body_stmt)
+    let pattern = ast_to_m_ast pattern_stmt in
+    let fix = compute_fixity assoc_stmt pattern in
+    (*let pre = compute_precendence preced_stmt in*)
+    let m = new_macro fix pattern (ast_to_m_ast body_stmt)
     in
-    add_macro mmngr m
+    (*add_macro mmngr m*)
+    ()
 ;;
 
 let rec expand mmngr (stmt :ast) :ast =
+    let helper ass pre_stmt pat_stmt body_stmt =
+        let body_exp = expand mmngr body_stmt in
+        define_macro mmngr None pre_stmt pat_stmt body_exp;
+        NodeList []
+    in
     match stmt with
     | (Atom _) as a -> a
     | NodeList (Atom (Id "defmacro")::tail) -> (match tail with
         | [preced_stmt; pattern_stmt; body_stmt] ->
-            define_macro tail; NodeList []
+            helper None preced_stmt pattern_stmt body_stmt
         | [assoc_stmt; preced_stmt; pattern_stmt; body_stmt] ->
-            define_macro tail; NodeList []
-        | raise MacroErr "DEFMACRO: invalid syntax")
+            helper (Some assoc_stmt) preced_stmt pattern_stmt body_stmt;
+        | _ -> raise (MacroErr "DEFMACRO: invalid syntax"))
     | NodeList nl -> let deep_expanded =
         NodeList (List.map (expand mmngr) nl) in
         try
