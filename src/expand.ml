@@ -155,6 +155,8 @@ let add_pgroup_rules mmngr p :unit =
 ;;
 
 let build_grammar mmngr :unit =
+    let _ = clear_gram mmngr.gram in
+    let _ = Hashtbl.clear mmngr.rules_for_macro in
     let f i :unit =
         (*Printf.printf "dfs: %d\n" i;*)
         match i with
@@ -289,6 +291,10 @@ let compute_assoc (assoc_stmt :ast option) :associativity option =
 
 (*TODO: can prefix and postfix be non-associated?*)
 let compute_fixity assoc_stmt pattern =
+    (*let _ = match assoc_stmt with*)
+    (*| None -> Printf.printf "None\n"*)
+    (*| Some s -> Printf.printf "%s\n" (str_of_ast s)*)
+    (*in*)
     let assoc = compute_assoc assoc_stmt in
     (*match pattern with*)
     (*| NodeList nl -> (match (List.hd nl, Util.list_last nl) with*)
@@ -324,6 +330,40 @@ let ast_to_m_ast stmt =
     | _ -> raise (MacroErr "MACRO pattern/body should be a statement")
 ;;
 
+let stmt_to_macro_name stmt :macro_name =
+    let f n =
+        match n with
+        | Atom (Id "_") -> Placeholder
+        | Atom (Id s) | Atom (Op s) -> MName s
+        | _ -> raise (MacroErr
+            "Macro name element must be identifier or operator)")
+    in
+    match stmt with
+    | NodeList nl -> List.map f nl
+    | _ -> raise (MacroErr "Invalid macro name")
+;;
+
+let compute_precedence stmt =
+    let rec f key s =
+        let ret = match s with
+            | [] | [_] -> None
+            | Atom (Id k)::v::_ when k = key -> Some (stmt_to_macro_name v)
+            | _::_::rest -> f key rest
+        in
+        (*Printf.printf "key: %s -> %s\n" key (match xx with |None -> "none"*)
+            (*| Some n -> str_of_macro_id n);*)
+        ret
+    in
+    (*Printf.printf "stmt: %s\n" (str_of_ast stmt);*)
+    match stmt with
+    | NodeList (Atom (Id "precedence")::tail) ->
+        (match f "equals" tail, f "lowerThan" tail, f "higherThan" tail with
+        | (Some _) as eq, None, None -> [eq]
+        | None, high, low -> [high; low]
+        | _ -> raise (MacroErr "DEFMACRO: invalid precedence"))
+    | _ -> raise (MacroErr "DEFMACRO: invalid precedence")
+;;
+
 let define_macro mmngr
         (assoc_stmt :ast option)
         (preced_stmt :ast)
@@ -331,31 +371,48 @@ let define_macro mmngr
         (body_stmt :ast) :unit =
     let pattern = ast_to_m_ast pattern_stmt in
     let fix = compute_fixity assoc_stmt pattern in
-    (*let pre = compute_precendence preced_stmt in*)
+    let pre = compute_precedence preced_stmt in
     let m = new_macro fix pattern (ast_to_m_ast body_stmt)
     in
-    (*add_macro mmngr m*)
-    ()
+    match pre with
+    | [Some eq] -> add_macro_equals mmngr m eq
+    | [high; low] -> add_macro_between mmngr m high low
+    | _ -> assert false
 ;;
 
 let rec expand mmngr (stmt :ast) :ast =
     let helper ass pre_stmt pat_stmt body_stmt =
         let body_exp = expand mmngr body_stmt in
-        define_macro mmngr None pre_stmt pat_stmt body_exp;
-        NodeList []
+        (*Util.println (show_macro_manager mmngr);*)
+        define_macro mmngr ass pre_stmt pat_stmt body_exp;
+        (*TODO: build grammar increamentally instead of rebuild all for efficiency*)
+        build_grammar mmngr;
+        (*Util.println (show_macro_manager mmngr);*)
+        (*NodeList [Atom (Id "nil")]*)
+        Atom (Id "nil")
     in
+    (*let _ = Printf.printf "%s\n" (str_of_ast stmt) in*)
     match stmt with
     | (Atom _) as a -> a
-    | NodeList (Atom (Id "defmacro")::tail) -> (match tail with
-        | [preced_stmt; pattern_stmt; body_stmt] ->
-            helper None preced_stmt pattern_stmt body_stmt
-        | [assoc_stmt; preced_stmt; pattern_stmt; body_stmt] ->
-            helper (Some assoc_stmt) preced_stmt pattern_stmt body_stmt;
-        | _ -> raise (MacroErr "DEFMACRO: invalid syntax"))
+    | NodeList (Atom (Id "defmacro")::tail) -> (
+        (*let _ = Printf.printf "%s\n" (str_of_ast (NodeList tail)) in*)
+        let res = match tail with
+            | [pattern_stmt; preced_stmt; body_stmt] ->
+                helper None preced_stmt pattern_stmt body_stmt
+            | [pattern_stmt; assoc_stmt; preced_stmt; body_stmt] ->
+                (*Printf.printf "%s\n" (str_of_ast assoc_stmt);*)
+                helper (Some assoc_stmt) preced_stmt pattern_stmt body_stmt;
+            | _ -> raise (MacroErr "DEFMACRO: invalid syntax")
+        in
+        (*let _ = Printf.printf "%s\n" (str_of_ast res) in*)
+        res
+        )
     | NodeList nl -> let deep_expanded =
         NodeList (List.map (expand mmngr) nl) in
+        (*let _ = Printf.printf "deep expanded: %s\n" (str_of_ast deep_expanded) in*)
         try
             expand_one_level mmngr deep_expanded
         with
-            | MacroErr _ -> stmt
+            (*| MacroErr _ -> stmt*)
+            | MacroErr _ -> deep_expanded
 ;;

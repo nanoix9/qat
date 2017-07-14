@@ -29,6 +29,10 @@ let g start_symbol rules = {
     rules = DA.of_array rules}
 ;;
 
+let clear_gram gram =
+    DA.clear gram.rules
+;;
+
 let str_of_symbol s :string =
     match s with
     | Terminal (n, _) -> n

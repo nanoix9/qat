@@ -24,28 +24,32 @@ type macro_elem =
     | Variable of string
 ;;
 
-type macro_name =
+type macro_name_elem =
     | Placeholder
-    | Name of string
+    | MName of string
 ;;
-
+type macro_name = macro_name_elem list;;
 type macro_ast = macro_elem abs_tree;;
 
 type 'm macro = {
-    id: macro_name list;
+    id: macro_name;
     fix: fixity;
     pattern: 'm abs_tree;
     body: 'm abs_tree }
 ;;
 
-let macro_elem_to_name e :macro_name =
+let macro_elem_to_name e :macro_name_elem =
     match e with
-    | Literal lit -> Name (str_of_token lit)
+    | Literal lit -> (match lit with
+        | Op s | Id s -> MName s
+        | _ -> raise (MacroErr
+                "macro element must be identifier or operator")
+        )
     | Variable _ -> Placeholder
 ;;
 
-let pattern_to_name pattern :macro_name list =
-    let f e :macro_name =
+let pattern_to_name pattern :macro_name =
+    let f e :macro_name_elem =
         match e with
         | Atom a -> macro_elem_to_name a
         | _ -> raise (MacroErr
@@ -77,7 +81,7 @@ let str_of_fixity f :string =
 let str_of_macro_name n :string =
     match n with
     | Placeholder -> "_"
-    | Name s -> s
+    | MName s -> s
 ;;
 
 let str_of_macro_id i :string =
@@ -102,10 +106,16 @@ let str_of_macro mcr :string =
             (str_of_macro_ast mcr.body)
 ;;
 
+let str_of_macro_summary mcr :string =
+    Printf.sprintf "%s (%s)"
+            (str_of_macro_id mcr.id)
+            (str_of_fixity mcr.fix)
+;;
+
 
 module G = struct
     (*module MacroId = struct*)
-        (*type t = macro_name list*)
+        (*type t = macro_name*)
         (*let compare = Pervasives.compare*)
         (*let equal = (=)*)
         (*let hash = HT.hash*)
@@ -129,7 +139,7 @@ type precedence_group = {vert:G.V.t; macros:int DA.t};;
 type 'm precedences = {
     macros: ('m macro_with_group) DA.t;
     groups: precedence_group DA.t;
-    dict: (macro_name list, int) HT.t;
+    dict: (macro_name, int) HT.t;
     graph: G.t}
 ;;
 
@@ -207,7 +217,9 @@ let str_of_dag strs_of_vlabel g :string =
 
 let str_of_precedences {dict;macros;groups;graph} :string =
     let f i imacro :string =
-        string_of_int i ^ ".\t[" ^ string_of_int imacro ^ "] " ^ str_of_macro_id (DA.get macros imacro).macro.id
+        string_of_int i ^ ".\t["
+            ^ string_of_int imacro ^ "] "
+            ^ str_of_macro_summary (DA.get macros imacro).macro
     in
     let h i (grp:precedence_group) :string =
         string_of_int i ^ ".\n\t" ^ (Util.join_da "\n\t" (DA.mapi f grp.macros))
@@ -349,7 +361,7 @@ let add_macro_between_helper prcdn
 
 let add_macro_equals prcdn
         (mcr :macro_elem macro)
-        (base :macro_name list)
+        (base :macro_name)
         :unit =
     let {dict;macros;groups;graph} = prcdn in
     if HT.mem dict mcr.id then raise (MacroErr
@@ -361,8 +373,8 @@ let add_macro_equals prcdn
 ;;
 
 let add_macro_between prcdn mcr
-        (high :(macro_name list) option)
-        (low :(macro_name list) option)
+        (high :(macro_name) option)
+        (low :(macro_name) option)
         :unit =
     (*Printf.printf "%s\n" (str_of_precedences prcdn);*)
     let p_high = match high with
