@@ -1,3 +1,5 @@
+module DA = DynArray
+
 let println = Printf.printf "%s\n"
 ;;
 
@@ -11,7 +13,7 @@ let rec joina sep x =
     String.concat sep (Array.to_list x)
 
 let join_da sep da =
-    String.concat sep (DynArray.to_list da)
+    String.concat sep (DA.to_list da)
 
 module StrMap = Map.Make(String)
 ;;
@@ -47,3 +49,24 @@ let rec list_last = function
     | x::[] -> x
     | _::xs -> list_last xs
     | []    -> failwith "no element"
+;;
+
+let read_file fn :string =
+    let lines = DA.make 10 in
+    let cont = ref true in
+    let _ =
+        let ic = open_in fn in
+        while !cont do
+            try
+                let line = input_line ic in
+                DA.add lines line
+            with
+            | End_of_file -> cont := false
+            | e -> raise e
+        done;
+        close_in ic
+    in
+    "(" ^ join_da "\n" lines ^ ")"
+;;
+
+

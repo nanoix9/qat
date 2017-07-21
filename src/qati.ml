@@ -1,47 +1,28 @@
 open Qatlib
 open Printf
 open Evaluate
-module DA = DynArray
-
-let read_file fn :string =
-    let lines = DA.make 10 in
-    let cont = ref true in
-    let _ =
-        let ic = open_in fn in
-        while !cont do
-            try
-                let line = input_line ic in
-                DA.add lines line
-            with
-            | End_of_file -> cont := false
-            | e -> raise e
-        done;
-        close_in ic
-    in
-    "(" ^ Util.join_da "\n" lines ^ ")"
-;;
 
 let parse_file fn =
-    let code = read_file fn in
+    let code = Util.read_file fn in
     printf "%s\n" (run_parse code)
 ;;
 
 let expand_file fn =
     let interp = make_interp () in
-    let code = read_file fn in
+    let code = Util.read_file fn in
     printf "%s\n" (run_expand interp code)
 ;;
 
 let run_file_no_macro fn =
     let interp = make_interp () in
-    let code = read_file fn in
+    let code = Util.read_file fn in
     let _ = run_no_macro interp code in ()
     (*let _ =  printf "%s\n" code in ()*)
 ;;
 
 let run_file fn =
     let interp = make_interp () in
-    let code = read_file fn in
+    let code = Util.read_file fn in
     let _ = run interp code in ()
     (*let _ =  printf "%s\n" code in ()*)
 ;;
