@@ -60,12 +60,19 @@ let pattern_to_name pattern :macro_name =
     | NodeList el -> List.map f el
 ;;
 
-let new_macro fix patt body :macro_elem macro =
-    let to_atoms = List.map (fun x -> Atom x) in {
-        id=List.map macro_elem_to_name patt;
-        fix=fix; (* TODO: checking fixity *)
-        pattern=NodeList (to_atoms patt);
-        body=NodeList (to_atoms body)}
+let new_macro (fix :fixity)
+        (patt :macro_ast)
+        (body :macro_ast)
+        :macro_elem macro = {
+    id=pattern_to_name patt;
+    fix=fix; (* TODO: checking fixity *)
+    pattern=patt;
+    body=body}
+;;
+
+let new_macro_util fix patt body :macro_elem macro =
+    let to_atoms = List.map (fun x -> Atom x) in
+    new_macro fix (NodeList (to_atoms patt)) (NodeList (to_atoms body))
 ;;
 
 let str_of_fixity f :string =
@@ -401,7 +408,8 @@ let make_precedences () = let p = {
         groups = DA.make 10;
         graph = G.create ~size:100 () }
     in
-    add_macro_between_helper p (new_macro Closed [Variable "_"] []) None None;
+    add_macro_between_helper p
+        (new_macro_util Closed [Variable "_"] []) None None;
     p
 ;;
 

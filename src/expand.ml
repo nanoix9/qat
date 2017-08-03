@@ -295,24 +295,30 @@ let compute_fixity assoc_stmt pattern =
     (*| None -> Printf.printf "None\n"*)
     (*| Some s -> Printf.printf "%s\n" (str_of_ast s)*)
     (*in*)
+    let get_atom node =
+        match node with
+        | Atom a -> a
+        | NodeList _ -> raise (MacroErr "Element in macro pattern must be atom")
+    in
     let assoc = compute_assoc assoc_stmt in
-    (*match pattern with*)
-    (*| NodeList nl -> (match (List.hd nl, Util.list_last nl) with*)
-    match (List.hd pattern, Util.list_last pattern) with
-    | Literal _, Variable _ -> (match assoc with
-        | None | Some Right -> Prefix
-        | _ -> raise (MacroErr "Prefix can only be right associated"))
-    | Variable _, Variable _ -> (match assoc with
-        | Some a -> Infix a
-        | _ -> raise (MacroErr
-            "Associativity must be provieded for infix operator"))
-    | Variable _, Literal _ -> (match assoc with
-        | None | Some Left -> Postfix
-        | _ -> raise (MacroErr "Postfix can only be left associated"))
-    | Literal _, Literal _ -> (match assoc with
-        | None | Some Non -> Closed
-        | _ -> raise (MacroErr "Closed can only be none associated"))
-    (*| _ -> raise (MacroErr "")*)
+    match pattern with
+    | NodeList nl -> (match (get_atom (List.hd nl),
+            get_atom (Util.list_last nl)) with
+        (*match (List.hd pattern, Util.list_last pattern) with*)
+        | Literal _, Variable _ -> (match assoc with
+            | None | Some Right -> Prefix
+            | _ -> raise (MacroErr "Prefix can only be right associated"))
+        | Variable _, Variable _ -> (match assoc with
+            | Some a -> Infix a
+            | _ -> raise (MacroErr
+                "Associativity must be provieded for infix operator"))
+        | Variable _, Literal _ -> (match assoc with
+            | None | Some Left -> Postfix
+            | _ -> raise (MacroErr "Postfix can only be left associated"))
+        | Literal _, Literal _ -> (match assoc with
+            | None | Some Non -> Closed
+            | _ -> raise (MacroErr "Closed can only be none associated")))
+    | _ -> raise (MacroErr "")
 ;;
 
 let pre_macro_body (body :ast) :ast =
@@ -330,33 +336,33 @@ let pre_macro_body (body :ast) :ast =
     fa body
 ;;
 
-let ast_to_m_ast stmt =
+let ast_to_m_ast stmt :macro_ast =
     let rec trans_rev_stmt e head_rev =
         match e with
         | [] -> head_rev
         | Atom (Op "?")::Atom (Id opd)::rest ->
-            trans_rev_stmt rest (Variable opd::head_rev)
+            trans_rev_stmt rest (Atom (Variable opd)::head_rev)
         | Atom opr::rest ->
-            trans_rev_stmt rest (Literal opr::head_rev)
+            trans_rev_stmt rest (Atom (Literal opr)::head_rev)
         | _ -> raise (MacroErr "MACRO element invalid")
     in
     match stmt with
-    | NodeList nl -> List.rev (trans_rev_stmt nl [])
+    | NodeList nl -> NodeList (List.rev (trans_rev_stmt nl []))
     | _ -> raise (MacroErr "MACRO pattern/body should be a statement")
 ;;
 
-let body_to_m_ast stmt =
+let body_to_m_ast stmt :macro_ast =
     let rec trans_rev_stmt e head_rev =
         match e with
         | [] -> head_rev
         | NodeList [Atom (Op "?"); Atom (Id opd)]::rest ->
-            trans_rev_stmt rest (Variable opd::head_rev)
+            trans_rev_stmt rest (Atom (Variable opd)::head_rev)
         | Atom opr::rest ->
-            trans_rev_stmt rest (Literal opr::head_rev)
+            trans_rev_stmt rest (Atom (Literal opr)::head_rev)
         | _ -> raise (MacroErr "MACRO element invalid")
     in
     match stmt with
-    | NodeList nl -> List.rev (trans_rev_stmt nl [])
+    | NodeList nl -> NodeList (List.rev (trans_rev_stmt nl []))
     | _ -> raise (MacroErr "MACRO pattern/body should be a statement")
 ;;
 

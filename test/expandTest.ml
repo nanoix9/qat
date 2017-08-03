@@ -65,23 +65,23 @@ let y = v"y"
 let z = v"z"
 ;;
 
-let madd = new_macro (Infix Left) [x; lo"+"; y] [ls"add"; x; y]
-let msub = new_macro (Infix Left) [x; lo"-"; y] [ls"sub"; x; y]
-let mmul = new_macro (Infix Left) [x; lo"*"; y] [ls"mul"; x; y]
-let mdiv = new_macro (Infix Right) [x; lo"/"; y] [ls"slash"; x; y]
-let mpow = new_macro (Infix Right) [x; lo"**"; y] [ls"pow"; x; y]
-let mnot = new_macro Prefix [lo"!"; x] [ls"not"; x]
-let mge = new_macro (Infix Non) [x; lo">="; y] [ls"ge"; x; y]
-let mw = new_macro Closed [ls"while"; x; ls"do"; y; ls"done"]
+let madd = new_macro_util (Infix Left) [x; lo"+"; y] [ls"add"; x; y]
+let msub = new_macro_util (Infix Left) [x; lo"-"; y] [ls"sub"; x; y]
+let mmul = new_macro_util (Infix Left) [x; lo"*"; y] [ls"mul"; x; y]
+let mdiv = new_macro_util (Infix Right) [x; lo"/"; y] [ls"slash"; x; y]
+let mpow = new_macro_util (Infix Right) [x; lo"**"; y] [ls"pow"; x; y]
+let mnot = new_macro_util Prefix [lo"!"; x] [ls"not"; x]
+let mge = new_macro_util (Infix Non) [x; lo">="; y] [ls"ge"; x; y]
+let mw = new_macro_util Closed [ls"while"; x; ls"do"; y; ls"done"]
                     [ls"while_loop"; x; y]
-let mif = new_macro Prefix [ls"if"; x; ls"then"; y]
+let mif = new_macro_util Prefix [ls"if"; x; ls"then"; y]
                     [ls"if_then"; x; y]
-let mif2 = new_macro Prefix [ls"if"; x; ls"then"; y; ls"else"; z]
+let mif2 = new_macro_util Prefix [ls"if"; x; ls"then"; y; ls"else"; z]
                     [ls"if_else"; x; y; z]
-let mter = new_macro (Infix Right) [x; lo"?"; y; lo":"; z]
+let mter = new_macro_util (Infix Right) [x; lo"?"; y; lo":"; z]
                     [ls"if_else"; x; y; z]
-let minc = new_macro Postfix [x; lo"++"] [ls"inc"; x]
-let mdec = new_macro Postfix [x; lo"--"] [ls"dec"; x]
+let minc = new_macro_util Postfix [x; lo"++"] [ls"inc"; x]
+let mdec = new_macro_util Postfix [x; lo"--"] [ls"dec"; x]
 ;;
     (*add_macro_between m m4 (Some m3.id) None;*)
     (*add_macro_between m m4 (Some m1.id) (Some m3.id);*)

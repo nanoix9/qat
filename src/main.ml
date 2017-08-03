@@ -80,15 +80,15 @@ let earley_string_main () =
 (*========== test macro expanding ============*)
 let mmngr =
     let m = create_macro_manager () in
-    let m1 = new_macro (Infix Left) [v"x"; lo"+"; v"y"]
+    let m1 = new_macro_util (Infix Left) [v"x"; lo"+"; v"y"]
             [ls"add"; v"x"; v"y"] in
-    let m2 = new_macro (Infix Left) [v"x"; lo"-"; v"y"]
+    let m2 = new_macro_util (Infix Left) [v"x"; lo"-"; v"y"]
             [ls"sub"; v"x"; v"y"] in
-    let m3 = new_macro (Infix Left) [v"x"; lo"*"; v"y"]
+    let m3 = new_macro_util (Infix Left) [v"x"; lo"*"; v"y"]
             [ls"mul"; v"x"; v"y"] in
-    let m4 = new_macro (Infix Right) [v"x"; lo"/"; v"y"]
+    let m4 = new_macro_util (Infix Right) [v"x"; lo"/"; v"y"]
             [ls"slash"; v"x"; v"y"] in
-    let m5 = new_macro (Infix Right) [v"x"; lo"**"; v"y"]
+    let m5 = new_macro_util (Infix Right) [v"x"; lo"**"; v"y"]
             [ls"pow"; v"x"; v"y"] in
     add_macro_between m m3 None None;
     add_macro_between m m1 (Some m3.id) None;
@@ -135,11 +135,11 @@ let test_substitute () =
 
 let foobar () =
     let prcdn = make_precedences () in
-    let plus = (new_macro (Infix Right)
+    let plus = (new_macro_util (Infix Right)
             [v"x"; lo"+"; v"y"]
             [ls"add"; v"x"; v"y"])
     in
-    let sub = (new_macro (Infix Right)
+    let sub = (new_macro_util (Infix Right)
             [v"x"; lo"-"; v"y"]
             [ls"sub"; v"x"; v"y"])
     in
