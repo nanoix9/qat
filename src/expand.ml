@@ -315,11 +315,41 @@ let compute_fixity assoc_stmt pattern =
     (*| _ -> raise (MacroErr "")*)
 ;;
 
+let pre_macro_body (body :ast) :ast =
+    let rec flist a =
+        match a with
+        | [] -> []
+        | (Atom (Op "?") as q)::(Atom (Id s) as v)::res ->
+            NodeList [q; v]::flist res
+        | x::xs -> fa x::flist xs
+    and fa a =
+        match a with
+        | NodeList xs -> NodeList (flist xs)
+        | (Atom _ ) as aa -> aa
+    in
+    fa body
+;;
+
 let ast_to_m_ast stmt =
     let rec trans_rev_stmt e head_rev =
         match e with
         | [] -> head_rev
         | Atom (Op "?")::Atom (Id opd)::rest ->
+            trans_rev_stmt rest (Variable opd::head_rev)
+        | Atom opr::rest ->
+            trans_rev_stmt rest (Literal opr::head_rev)
+        | _ -> raise (MacroErr "MACRO element invalid")
+    in
+    match stmt with
+    | NodeList nl -> List.rev (trans_rev_stmt nl [])
+    | _ -> raise (MacroErr "MACRO pattern/body should be a statement")
+;;
+
+let body_to_m_ast stmt =
+    let rec trans_rev_stmt e head_rev =
+        match e with
+        | [] -> head_rev
+        | NodeList [Atom (Op "?"); Atom (Id opd)]::rest ->
             trans_rev_stmt rest (Variable opd::head_rev)
         | Atom opr::rest ->
             trans_rev_stmt rest (Literal opr::head_rev)
@@ -372,7 +402,7 @@ let define_macro mmngr
     let pattern = ast_to_m_ast pattern_stmt in
     let fix = compute_fixity assoc_stmt pattern in
     let pre = compute_precedence preced_stmt in
-    let m = new_macro fix pattern (ast_to_m_ast body_stmt)
+    let m = new_macro fix pattern (body_to_m_ast body_stmt)
     in
     match pre with
     | [Some eq] -> add_macro_equals mmngr m eq
@@ -382,8 +412,9 @@ let define_macro mmngr
 
 let rec expand mmngr (stmt :ast) :ast =
     let helper ass pre_stmt pat_stmt body_stmt =
-        let body_exp = expand mmngr body_stmt in
+        let body_exp = expand mmngr (pre_macro_body body_stmt) in
         (*Util.println (show_macro_manager mmngr);*)
+        Util.println (str_of_ast body_exp);
         define_macro mmngr ass pre_stmt pat_stmt body_exp;
         (*TODO: build grammar increamentally instead of rebuild all for efficiency*)
         build_grammar mmngr;
@@ -395,7 +426,7 @@ let rec expand mmngr (stmt :ast) :ast =
     match stmt with
     | (Atom _) as a -> a
     | NodeList (Atom (Id "defmacro")::tail) -> (
-        (*let _ = Printf.printf "%s\n" (str_of_ast (NodeList tail)) in*)
+        let _ = Printf.printf "%s\n" (str_of_ast (NodeList tail)) in
         let res = match tail with
             | [pattern_stmt; preced_stmt; body_stmt] ->
                 helper None preced_stmt pattern_stmt body_stmt
