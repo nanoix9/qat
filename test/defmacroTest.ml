@@ -54,8 +54,7 @@ let i n :ast = Atom (Imm (Int (string_of_int n)));;
 (*let mdec = new_macro Postfix [x; lo"--"] [ls"dec"; x]*)
 (*;;*)
 
-let add_macro_between = Expand.add_macro_between;;
-let add_macro_equals = Expand.add_macro_equals;;
+let add_macro = Expand.add_macro;;
 
 let ph = id"_";;
 let x = id"x"

@@ -86,16 +86,21 @@ let mdec = new_macro_util Postfix [x; lo"--"] [ls"dec"; x]
     (*add_macro_between m m4 (Some m3.id) None;*)
     (*add_macro_between m m4 (Some m1.id) (Some m3.id);*)
 
-let add_macro_between = Expand.add_macro_between;;
-let add_macro_equals = Expand.add_macro_equals;;
+let mbnn = MBetween (None, None)
+let lower_than h = MBetween (Some h, None)
+let higher_than l = MBetween (None, Some l)
+let between h l = MBetween (Some h, Some l)
+;;
+
+let add_macro = Expand.add_macro;;
 
 let suite =
     "expand" >::: [
         "test_parse_left" >:: (fun c ->
             let f m =
-                add_macro_between m mmul None None;
-                add_macro_between m madd (Some mmul.id) None;
-                add_macro_equals m msub madd.id;
+                add_macro m mmul mbnn;
+                add_macro m madd (lower_than mmul.id);
+                add_macro m msub (MEquals madd.id);
                 (*add_macro_between m m5 None (Some m3.id);*)
             in
             assert_expand_parse c f
@@ -106,10 +111,10 @@ let suite =
 
         "test_parse_right" >:: (fun c ->
             let f m =
-                add_macro_between m mmul None None;
-                add_macro_between m madd (Some mmul.id) None;
-                add_macro_equals m msub madd.id;
-                add_macro_between m mpow None (Some mmul.id);
+                add_macro m mmul mbnn;
+                add_macro m madd (lower_than mmul.id);
+                add_macro m msub (MEquals madd.id);
+                add_macro m mpow (higher_than mmul.id);
             in
             assert_expand_parse c f
                 (tr [| lf_id"a"; lf_op"+";
@@ -122,8 +127,8 @@ let suite =
 
         "test_parse_prefix" >:: (fun c ->
             let f m =
-                add_macro_between m mge None None;
-                add_macro_between m mnot (Some mge.id) None;
+                add_macro m mge mbnn;
+                add_macro m mnot (lower_than mge.id);
             in
             assert_expand_parse c f
                 (tr [| lf_op"!";
@@ -134,8 +139,8 @@ let suite =
 
         "test_parse_postfix" >:: (fun c ->
             let f m =
-                add_macro_between m minc None None;
-                add_macro_equals m mdec minc.id;
+                add_macro m minc mbnn;
+                add_macro m mdec (MEquals minc.id);
             in
             assert_expand_parse c f
                 (tr [| tr [| lf_id"x"; lf_op"++"; |]; lf_op"--" |])
@@ -144,10 +149,10 @@ let suite =
 
         "test_parse_closed" >:: (fun c ->
             let f m =
-                add_macro_between m mge None None;
-                add_macro_between m mdec None None;
-                add_macro_between m mw None None;
-                (*add_macro_between m m5 None (Some m3.id);*)
+                add_macro m mge mbnn;
+                add_macro m mdec mbnn;
+                add_macro m mw mbnn;
+                (*add_macro m m5 None (Some m3.id);*)
             in
             assert_expand_parse c f
                 (tr [| lf_id"while";
@@ -161,9 +166,9 @@ let suite =
 
         "test_parse_if" >:: (fun c ->
             let f m =
-                add_macro_between m mif None None;
-                add_macro_between m mge (Some mif.id) None;
-                add_macro_between m madd None (Some mif.id);
+                add_macro m mif mbnn;
+                add_macro m mge (lower_than mif.id);
+                add_macro m madd (higher_than mif.id);
             in
             assert_expand_parse c f
                 (tr [| lf_id"if";
@@ -177,8 +182,8 @@ let suite =
 
         "test_parse_no_relation" >:: (fun c ->
             let f m =
-                add_macro_between m madd None None;
-                add_macro_between m msub None None;
+                add_macro m madd mbnn;
+                add_macro m msub mbnn;
             in
             assert_expand_parse_error f
                 (e [id "x"; op "-"; id "y"; op "+"; id"z"])
@@ -187,9 +192,9 @@ let suite =
 
         "test_parse_add_between_no_relation" >:: (fun c ->
             let f m =
-                add_macro_between m madd None None;
-                add_macro_between m msub None None;
-                add_macro_between m mmul (Some madd.id) (Some msub.id);
+                add_macro m madd mbnn;
+                add_macro m msub mbnn;
+                add_macro m mmul (between madd.id msub.id);
             in
             assert_expand_parse_error f (e [])
                 "Add Precedence between group 1 and 2 but 1 is not higher than 2"
@@ -197,9 +202,9 @@ let suite =
 
         "test_parse_add_between_lower" >:: (fun c ->
             let f m =
-                add_macro_between m mmul None None;
-                add_macro_between m madd (Some mmul.id) None;
-                add_macro_between m msub (Some madd.id) (Some mmul.id);
+                add_macro m mmul mbnn;
+                add_macro m madd (lower_than mmul.id);
+                add_macro m msub (between madd.id mmul.id);
             in
             assert_expand_parse_error f (e [])
                 "Add Precedence between group 2 and 1 but 2 is not higher than 1"
@@ -207,16 +212,16 @@ let suite =
 
         "test_expand_right" >:: (fun c ->
             let f m =
-                add_macro_between m mw None None;
-                add_macro_equals m mif mw.id;
-                add_macro_equals m mif2 mw.id;
-                add_macro_between m minc (Some mw.id) None;
-                add_macro_equals m mdec minc.id;
-                add_macro_between m mpow (Some minc.id) None;
-                add_macro_between m mmul (Some mpow.id) None;
-                add_macro_between m madd (Some mmul.id) None;
-                add_macro_equals m msub madd.id;
-                add_macro_between m mge (Some msub.id) None;
+                add_macro m mw mbnn;
+                add_macro m mif (MEquals mw.id);
+                add_macro m mif2 (MEquals mw.id);
+                add_macro m minc (lower_than mw.id);
+                add_macro m mdec (MEquals minc.id);
+                add_macro m mpow (lower_than minc.id);
+                add_macro m mmul (lower_than mpow.id);
+                add_macro m madd (lower_than mmul.id);
+                add_macro m msub (MEquals madd.id);
+                add_macro m mge (lower_than msub.id);
             in
             assert_expand c f
                 (e [id"while_loop";

@@ -80,20 +80,21 @@ let earley_string_main () =
 (*========== test macro expanding ============*)
 let mmngr =
     let m = create_macro_manager () in
+    let m3 = new_macro_util (Infix Left) [v"x"; lo"*"; v"y"]
+            [ls"mul"; v"x"; v"y"] in
     let m1 = new_macro_util (Infix Left) [v"x"; lo"+"; v"y"]
             [ls"add"; v"x"; v"y"] in
     let m2 = new_macro_util (Infix Left) [v"x"; lo"-"; v"y"]
             [ls"sub"; v"x"; v"y"] in
-    let m3 = new_macro_util (Infix Left) [v"x"; lo"*"; v"y"]
-            [ls"mul"; v"x"; v"y"] in
     let m4 = new_macro_util (Infix Right) [v"x"; lo"/"; v"y"]
             [ls"slash"; v"x"; v"y"] in
     let m5 = new_macro_util (Infix Right) [v"x"; lo"**"; v"y"]
             [ls"pow"; v"x"; v"y"] in
-    add_macro_between m m3 None None;
-    add_macro_between m m1 (Some m3.id) None;
-    add_macro_equals m m2 m1.id;
-    add_macro_between m m5 None (Some m3.id);
+    add_macro m m3 (MBetween (None, None));
+    add_macro m m1 (MBetween ((Some m3.id), None));
+    add_macro m m2 (MEquals m1.id);
+    (*(MBetween ((Some m3.id), None))*)
+    add_macro m m5 (MBetween (None, (Some m3.id)));
     (*add_macro_between m m4 (Some m3.id) None;*)
     (*add_macro_between m m4 (Some m1.id) (Some m3.id);*)
     build_grammar m;
@@ -135,16 +136,16 @@ let test_substitute () =
 
 let foobar () =
     let prcdn = make_precedences () in
-    let plus = (new_macro_util (Infix Right)
+    let plus = new_macro_util (Infix Right)
             [v"x"; lo"+"; v"y"]
-            [ls"add"; v"x"; v"y"])
+            [ls"add"; v"x"; v"y"]
     in
-    let sub = (new_macro_util (Infix Right)
+    let sub = new_macro_util (Infix Right)
             [v"x"; lo"-"; v"y"]
-            [ls"sub"; v"x"; v"y"])
+            [ls"sub"; v"x"; v"y"]
     in
-    Macro.add_macro_between prcdn plus None None;
-    Macro.add_macro_between prcdn sub (Some plus.id) None;
+    Macro.add_macro prcdn plus (MBetween (None, None));
+    Macro.add_macro prcdn sub (MBetween ((Some plus.id), None));
     printf "%s\n" (str_of_precedences prcdn)
 ;;
 
@@ -274,11 +275,11 @@ let main () =
 
     (*earley_string_main ();*)
 
-    (*macro_main ()*)
+    macro_main ();
 
-    env_main ();
+    (*env_main ();*)
 
-    eval_main ();
+    (*eval_main ();*)
 
     (*print_graph ()*)
 ;;

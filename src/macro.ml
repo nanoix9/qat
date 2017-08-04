@@ -28,14 +28,20 @@ type macro_name_elem =
     | Placeholder
     | MName of string
 ;;
-type macro_name = macro_name_elem list;;
+type macro_id = macro_name_elem list;;
 type macro_ast = macro_elem abs_tree;;
 
+type macro_precedence =
+    | MEquals of macro_id
+    | MBetween of macro_id option * macro_id option
+;;
+
 type 'm macro = {
-    id: macro_name;
+    id: macro_id;
     fix: fixity;
     pattern: 'm abs_tree;
-    body: 'm abs_tree }
+    body: 'm abs_tree;
+}
 ;;
 
 let macro_elem_to_name e :macro_name_elem =
@@ -48,7 +54,7 @@ let macro_elem_to_name e :macro_name_elem =
     | Variable _ -> Placeholder
 ;;
 
-let pattern_to_name pattern :macro_name =
+let pattern_to_id pattern :macro_id =
     let f e :macro_name_elem =
         match e with
         | Atom a -> macro_elem_to_name a
@@ -64,10 +70,11 @@ let new_macro (fix :fixity)
         (patt :macro_ast)
         (body :macro_ast)
         :macro_elem macro = {
-    id=pattern_to_name patt;
+    id=pattern_to_id patt;
     fix=fix; (* TODO: checking fixity *)
     pattern=patt;
-    body=body}
+    body=body;
+}
 ;;
 
 let new_macro_util fix patt body :macro_elem macro =
@@ -85,14 +92,14 @@ let str_of_fixity f :string =
     | Closed -> "closed"
 ;;
 
-let str_of_macro_name n :string =
+let str_of_macro_name_elem n :string =
     match n with
     | Placeholder -> "_"
     | MName s -> s
 ;;
 
 let str_of_macro_id i :string =
-    String.concat " " (List.map str_of_macro_name i)
+    String.concat " " (List.map str_of_macro_name_elem i)
 ;;
 
 let str_of_macro_elem e :string =
@@ -105,12 +112,24 @@ let str_of_macro_ast e :string =
     str_of_abs_tree str_of_macro_elem e
 ;;
 
+let str_of_macro_precedence p :string =
+    let f n =
+        match n with
+        | None -> "none"
+        | Some e -> str_of_macro_id e
+    in
+    match p with
+    | MEquals e -> "equals " ^ str_of_macro_id e
+    | MBetween (h, l) -> "between " ^ f h ^ ", " ^ f l
+;;
+
 let str_of_macro mcr :string =
     Printf.sprintf "MACRO:\nName: %s\nFixity: %s\nPattern:\n%s\nBody:\n%s\n"
             (str_of_macro_id mcr.id)
             (str_of_fixity mcr.fix)
             (str_of_macro_ast mcr.pattern)
             (str_of_macro_ast mcr.body)
+            (*(str_of_macro_precedence mcr.precedence)*)
 ;;
 
 let str_of_macro_summary mcr :string =
@@ -146,7 +165,7 @@ type precedence_group = {vert:G.V.t; macros:int DA.t};;
 type 'm precedences = {
     macros: ('m macro_with_group) DA.t;
     groups: precedence_group DA.t;
-    dict: (macro_name, int) HT.t;
+    dict: (macro_id, int) HT.t;
     graph: G.t}
 ;;
 
@@ -368,7 +387,7 @@ let add_macro_between_helper prcdn
 
 let add_macro_equals prcdn
         (mcr :macro_elem macro)
-        (base :macro_name)
+        (base :macro_id)
         :unit =
     let {dict;macros;groups;graph} = prcdn in
     if HT.mem dict mcr.id then raise (MacroErr
@@ -380,8 +399,8 @@ let add_macro_equals prcdn
 ;;
 
 let add_macro_between prcdn mcr
-        (high :(macro_name) option)
-        (low :(macro_name) option)
+        (high :(macro_id) option)
+        (low :(macro_id) option)
         :unit =
     (*Printf.printf "%s\n" (str_of_precedences prcdn);*)
     let p_high = match high with
@@ -397,19 +416,29 @@ let add_macro_between prcdn mcr
     add_macro_between_helper prcdn mcr p_high p_low
 ;;
 
+let add_macro (prcdn :'m precedences)
+        (mcr :'m macro)
+        (prec :macro_precedence)
+        :unit =
+    match prec with
+    | MEquals eq -> add_macro_equals prcdn mcr eq
+    | MBetween (h, l) -> add_macro_between prcdn mcr h l
+;;
+
 let iter_pgroup (f :G.V.label -> unit) (prcdn :'m precedences) :unit =
     let g = prcdn.graph in
     Dfs.prefix_component (fun v -> f (G.V.label v)) g (get_start_node g)
 ;;
 
-let make_precedences () = let p = {
+let make_precedences () =
+    let p = {
         dict = HT.create 100;
         macros = DA.make 100;
         groups = DA.make 10;
         graph = G.create ~size:100 () }
     in
-    add_macro_between_helper p
-        (new_macro_util Closed [Variable "_"] []) None None;
+    let m = new_macro_util Closed [Variable "_"] [] in
+    add_macro_between_helper p m None None;
     p
 ;;
 

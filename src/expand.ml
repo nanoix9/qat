@@ -37,12 +37,8 @@ let show_macro_manager mmngr :string =
 
 ;;
 
-let add_macro_between mmngr =
-    Macro.add_macro_between mmngr.prcdn
-;;
-
-let add_macro_equals mmngr =
-    Macro.add_macro_equals mmngr.prcdn
+let add_macro mmngr =
+    Macro.add_macro mmngr.prcdn
 ;;
 
 let get_macro mmngr =
@@ -366,7 +362,7 @@ let body_to_m_ast stmt :macro_ast =
     | _ -> raise (MacroErr "MACRO pattern/body should be a statement")
 ;;
 
-let stmt_to_macro_name stmt :macro_name =
+let stmt_to_macro_id stmt :macro_id =
     let f n =
         match n with
         | Atom (Id "_") -> Placeholder
@@ -379,11 +375,11 @@ let stmt_to_macro_name stmt :macro_name =
     | _ -> raise (MacroErr "Invalid macro name")
 ;;
 
-let compute_precedence stmt =
+let compute_precedence stmt :macro_precedence =
     let rec f key s =
         let ret = match s with
             | [] | [_] -> None
-            | Atom (Id k)::v::_ when k = key -> Some (stmt_to_macro_name v)
+            | Atom (Id k)::v::_ when k = key -> Some (stmt_to_macro_id v)
             | _::_::rest -> f key rest
         in
         (*Printf.printf "key: %s -> %s\n" key (match xx with |None -> "none"*)
@@ -394,8 +390,8 @@ let compute_precedence stmt =
     match stmt with
     | NodeList (Atom (Id "precedence")::tail) ->
         (match f "equals" tail, f "lowerThan" tail, f "higherThan" tail with
-        | (Some _) as eq, None, None -> [eq]
-        | None, high, low -> [high; low]
+        | Some eq, None, None -> MEquals eq
+        | None, high, low -> MBetween (high, low)
         | _ -> raise (MacroErr "DEFMACRO: invalid precedence"))
     | _ -> raise (MacroErr "DEFMACRO: invalid precedence")
 ;;
@@ -404,16 +400,14 @@ let define_macro mmngr
         (assoc_stmt :ast option)
         (preced_stmt :ast)
         (pattern_stmt :ast)
-        (body_stmt :ast) :unit =
+        (body_stmt :ast)
+        :unit =
     let pattern = ast_to_m_ast pattern_stmt in
     let fix = compute_fixity assoc_stmt pattern in
     let pre = compute_precedence preced_stmt in
     let m = new_macro fix pattern (body_to_m_ast body_stmt)
     in
-    match pre with
-    | [Some eq] -> add_macro_equals mmngr m eq
-    | [high; low] -> add_macro_between mmngr m high low
-    | _ -> assert false
+    add_macro mmngr m pre
 ;;
 
 let rec expand mmngr (stmt :ast) :ast =
