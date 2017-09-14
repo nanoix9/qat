@@ -401,30 +401,33 @@ let define_macro mmngr
         (preced_stmt :ast)
         (pattern_stmt :ast)
         (body_stmt :ast)
-        :unit =
+        :('m macro * macro_precedence) =
     let pattern = ast_to_m_ast pattern_stmt in
     let fix = compute_fixity assoc_stmt pattern in
     let pre = compute_precedence preced_stmt in
     let m = new_macro fix pattern (body_to_m_ast body_stmt)
     in
-    add_macro mmngr m pre
+    add_macro mmngr m pre;
+    m, pre
 ;;
 
-let rec expand mmngr (stmt :ast) :ast =
+let rec extract_and_expand mmngr (stmt :ast)
+        :ast * ('m macro * macro_precedence) list =
     let helper ass pre_stmt pat_stmt body_stmt =
-        let body_exp = expand mmngr (pre_macro_body body_stmt) in
+        let body_exp, macro_list
+                = extract_and_expand mmngr (pre_macro_body body_stmt) in
         (*Util.println (show_macro_manager mmngr);*)
         Util.println (str_of_ast body_exp);
-        define_macro mmngr ass pre_stmt pat_stmt body_exp;
+        let m, pre = define_macro mmngr ass pre_stmt pat_stmt body_exp in
         (*TODO: build grammar increamentally instead of rebuild all for efficiency*)
         build_grammar mmngr;
         (*Util.println (show_macro_manager mmngr);*)
         (*NodeList [Atom (Id "nil")]*)
-        Atom (Id "nil")
+        Atom (Id "nil"), (m, pre)::macro_list
     in
     (*let _ = Printf.printf "%s\n" (str_of_ast stmt) in*)
     match stmt with
-    | (Atom _) as a -> a
+    | (Atom _) as a -> a, []
     | NodeList (Atom (Id "defmacro")::tail) -> (
         let _ = Printf.printf "%s\n" (str_of_ast (NodeList tail)) in
         let res = match tail with
@@ -438,12 +441,24 @@ let rec expand mmngr (stmt :ast) :ast =
         (*let _ = Printf.printf "%s\n" (str_of_ast res) in*)
         res
         )
-    | NodeList nl -> let deep_expanded =
-        NodeList (List.map (expand mmngr) nl) in
+    | NodeList nl -> let stmt_and_macros =
+                (List.map (extract_and_expand mmngr) nl) in
+        let deep_expanded =
+                NodeList (List.map (fun (e, _) -> e) stmt_and_macros) in
+        let macro_list =
+                List.fold_left (fun a (_, m) -> a @ m) [] stmt_and_macros in
         (*let _ = Printf.printf "deep expanded: %s\n" (str_of_ast deep_expanded) in*)
-        try
-            expand_one_level mmngr deep_expanded
-        with
-            (*| MacroErr _ -> stmt*)
-            | MacroErr _ -> deep_expanded
+        let expanded_stmt =
+            try
+                expand_one_level mmngr deep_expanded
+            with
+                (*| MacroErr _ -> stmt*)
+                | MacroErr _ -> deep_expanded
+        in
+        expanded_stmt, macro_list
+;;
+
+let expand mmngr (stmt :ast) :ast =
+    match extract_and_expand mmngr stmt with
+    | (s, _) -> s
 ;;
