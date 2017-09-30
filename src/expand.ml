@@ -7,7 +7,9 @@ module StrMap = Util.StrMap;;
 type ('m, 't) macro_manager = {
     prcdn: 'm precedences; (* macro precedence hierarchy *)
     gram: 't grammar;
-    rules_for_macro: (int, int) Hashtbl.t }
+    rules_for_macro: (int, int) Hashtbl.t;
+    macros_defs: (('m macro) * macro_precedence) DA.t
+}
 ;;
 
 let start_symbol = "E";;
@@ -15,7 +17,9 @@ let start_symbol = "E";;
 let create_macro_manager () :(macro_elem, Ast.ast) macro_manager =
     {prcdn=make_precedences ();
     gram=g start_symbol [| |];
-    rules_for_macro=Hashtbl.create 100}
+    rules_for_macro=Hashtbl.create 100;
+    macros_defs=DA.make 100
+}
 ;;
 
 let v s = Variable s;;
@@ -411,6 +415,7 @@ let define_macro mmngr
     m, pre
 ;;
 
+(*seems `macro_list` is not necessary but I'm lazy to remove it for now*)
 let rec extract_and_expand mmngr (stmt :ast)
         :ast * ('m macro * macro_precedence) list =
     let helper ass pre_stmt pat_stmt body_stmt =
